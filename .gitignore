@@ -1,0 +1,5 @@
+*.swp
+.vscode
+*.pyc
+*.mat
+.DS_Store
