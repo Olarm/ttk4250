@@ -8,9 +8,9 @@ def cross_product_matrix(n: ArrayLike, debug: bool = True) -> np.ndarray:
 
     # TODO: Create the cross product matrix
 
-    S = np.array([[0, -n[2], n[1]],
-                  [n[2], 0, -n[0]],
-                  [-n[1], n[0], 0]])
+    S = np.array([[0, -vector[2], vector[1]],
+                  [vector[2], 0, -vector[0]],
+                  [-vector[1], vector[0], 0]])
 
     #raise NotImplementedError
     if debug:
