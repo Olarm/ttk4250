@@ -1,4 +1,7 @@
 # %% imports
+import time
+start_time = time.time()
+
 import scipy
 import scipy.io
 import scipy.stats
@@ -425,5 +428,5 @@ axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias
 axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
 plt.grid()
 
-
+print("--- %s seconds ---" % (time.time() - start_time))
 # %%
