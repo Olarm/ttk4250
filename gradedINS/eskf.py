@@ -644,7 +644,7 @@ class ESKF:
         )
 
         # TODO: Calculate NIS
-        NIS = v.T @ la.inv(S) @ v  
+        NIS = v.T @ la.inv(S) @ v
 
         assert NIS >= 0, "EKSF.NIS_GNSS_positionNIS: NIS not positive"
 
@@ -733,8 +733,24 @@ class ESKF:
         NEES_accbias = cls._NEES(d_x[ERR_ACC_BIAS_IDX], P[ERR_ACC_BIAS_IDX ** 2])  # TODO: NEES accelerometer bias
         NEES_gyrobias = cls._NEES(d_x[ERR_GYRO_BIAS_IDX], P[ERR_GYRO_BIAS_IDX ** 2])  # TODO: NEES gyroscope bias
         
+        NEES_pos_x = cls._NEES(d_x[CatSlice(start=0, stop=1)], P[CatSlice(start=0, stop=1) ** 2])
+        NEES_pos_y = cls._NEES(d_x[CatSlice(start=1, stop=2)], P[CatSlice(start=1, stop=2) ** 2])
+        NEES_pos_z = cls._NEES(d_x[CatSlice(start=2, stop=3)], P[CatSlice(start=2, stop=3) ** 2])
+        
+        NEES_gyrobias_x = cls._NEES(d_x[CatSlice(start=12, stop=13)], P[CatSlice(start=12, stop=13) ** 2])
+        NEES_gyrobias_y = cls._NEES(d_x[CatSlice(start=13, stop=14)], P[CatSlice(start=13, stop=14) ** 2])
+        NEES_gyrobias_z = cls._NEES(d_x[CatSlice(start=14, stop=15)], P[CatSlice(start=14, stop=15) ** 2])
+        
+        NEES_accbias_x = cls._NEES(d_x[CatSlice(start=9, stop=10)], P[CatSlice(start=9, stop=10) ** 2])
+        NEES_accbias_y = cls._NEES(d_x[CatSlice(start=10, stop=11)], P[CatSlice(start=10, stop=11) ** 2])
+        NEES_accbias_z = cls._NEES(d_x[CatSlice(start=11, stop=12)], P[CatSlice(start=11, stop=12) ** 2])
+        
         NEESes = np.array(
-            [NEES_all, NEES_pos, NEES_vel, NEES_att, NEES_accbias, NEES_gyrobias]
+            [NEES_all, NEES_pos, NEES_vel, NEES_att, NEES_accbias, NEES_gyrobias, 
+             NEES_pos_x, NEES_pos_y, NEES_pos_z,
+             NEES_gyrobias_x, NEES_gyrobias_y, NEES_gyrobias_z,
+             NEES_accbias_x, NEES_accbias_y, NEES_accbias_z,
+            ]
         )
         assert np.all(NEESes >= 0), "ESKF.NEES: one or more negative NEESes"
         return NEESes

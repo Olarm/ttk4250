@@ -108,15 +108,15 @@ z_gyroscope = loaded_data["zGyro"].T
 
 
 dt = np.mean(np.diff(timeIMU))
-steps = len(z_acceleration)
-gnss_steps = len(z_GNSS)
+steps = len(z_acceleration) //10
+gnss_steps = len(z_GNSS) //10
 
 # %% Measurement noise
 # IMU noise values for STIM300, based on datasheet and simulation sample rate
 # Continous noise
 # TODO: What to remove here?
-cont_gyro_noise_std = 4.36e-5  # (rad/s)/sqrt(Hz)
-cont_acc_noise_std = 1.167e-3  # (m/s**2)/sqrt(Hz)
+cont_gyro_noise_std = 7*4.36e-5  # (rad/s)/sqrt(Hz)
+cont_acc_noise_std = 2*1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
 rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)
@@ -132,7 +132,7 @@ acc_bias_driving_noise_std = 4e-3
 cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)
 
 # Position and velocity measurement
-p_std = np.array([0.4, 0.7, 1.1]) #np.array([0.3, 0.3, 0.5])  # Measurement noise
+p_std = np.array([0.7, 0.7, 0.9]) #np.array([0.3, 0.3, 0.5])  # Measurement noise
 R_GNSS = np.diag(p_std ** 2)
 
 p_acc = 1e-16
@@ -169,6 +169,17 @@ NEES_vel = np.zeros(steps)
 NEES_att = np.zeros(steps)
 NEES_accbias = np.zeros(steps)
 NEES_gyrobias = np.zeros(steps)
+
+# Custom NEESes
+NEES_pos_x = np.zeros(steps)
+NEES_pos_y = np.zeros(steps)
+NEES_pos_z = np.zeros(steps)
+NEES_gyrobias_x = np.zeros(steps)
+NEES_gyrobias_y = np.zeros(steps)
+NEES_gyrobias_z = np.zeros(steps)
+NEES_accbias_x = np.zeros(steps)
+NEES_accbias_y = np.zeros(steps)
+NEES_accbias_z = np.zeros(steps)
 
 # %% Initialise
 x_pred[0, POS_IDX] = np.array([0, 0, -5])  # starting 5 metres above ground
@@ -213,6 +224,15 @@ for k in tqdm.trange(N):
         NEES_att[k],
         NEES_accbias[k],
         NEES_gyrobias[k],
+        NEES_pos_x[k],
+        NEES_pos_y[k],
+        NEES_pos_z[k],
+        NEES_gyrobias_x[k],
+        NEES_gyrobias_y[k],
+        NEES_gyrobias_z[k],
+        NEES_accbias_x[k],
+        NEES_accbias_y[k],
+        NEES_accbias_z[k],
     ) = eskf.NEESes(x_est[k], P_est[k], x_true[k])
 
     if k < N - 1:
@@ -351,6 +371,7 @@ axs4[1].legend([f"RMSE: {np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=0)
 confprob = 0.95
 CI15 = np.array(scipy.stats.chi2.interval(confprob, 15)).reshape((2, 1))
 CI3 = np.array(scipy.stats.chi2.interval(confprob, 3)).reshape((2, 1))
+CI1 = np.array(scipy.stats.chi2.interval(confprob, 1)).reshape((2, 1))
 
 fig5, axs5 = plt.subplots(7, 1, num=5, clear=True)
 
@@ -427,6 +448,84 @@ gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
 axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
 axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
 plt.grid()
+
+fig7, axs7 = plt.subplots(3, 1, num=7, clear=True)
+
+axs7[0].plot(t, (NEES_pos_x[0:N]).T)
+axs7[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_pos_x) * (NEES_pos_x <= CI1[1]))
+axs7[0].set(
+    title=f"Position X NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs7[0].set_ylim([0, 20])
+
+axs7[1].plot(t, (NEES_pos_y[0:N]).T)
+axs7[1].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_pos_y) * (NEES_pos_y <= CI1[1]))
+axs7[1].set(
+    title=f"Position Y NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs7[1].set_ylim([0, 20])
+
+axs7[2].plot(t, (NEES_pos_z[0:N]).T)
+axs7[2].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_pos_z) * (NEES_pos_z <= CI1[1]))
+axs7[2].set(
+    title=f"Position Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs7[2].set_ylim([0, 20])
+
+fig8, axs8 = plt.subplots(3, 1, num=8, clear=True)
+
+axs8[0].plot(t, (NEES_gyrobias_x[0:N]).T)
+axs8[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_gyrobias_x) * (NEES_gyrobias_x <= CI1[1]))
+axs8[0].set(
+    title=f"Gyrobias X NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs8[0].set_ylim([0, 20])
+
+axs8[1].plot(t, (NEES_gyrobias_y[0:N]).T)
+axs8[1].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_gyrobias_y) * (NEES_gyrobias_y <= CI1[1]))
+axs8[1].set(
+    title=f"Gyrobias Y NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs8[1].set_ylim([0, 20])
+
+axs8[2].plot(t, (NEES_gyrobias_z[0:N]).T)
+axs8[2].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_gyrobias_z) * (NEES_gyrobias_z <= CI1[1]))
+axs8[2].set(
+    title=f"Gyrobias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs8[2].set_ylim([0, 20])
+
+fig9, axs9 = plt.subplots(3, 1, num=9, clear=True)
+
+axs9[0].plot(t, (NEES_accbias_x[0:N]).T)
+axs9[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_accbias_x) * (NEES_accbias_x <= CI1[1]))
+axs9[0].set(
+    title=f"Accbias X NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs9[0].set_ylim([0, 20])
+
+axs9[1].plot(t, (NEES_accbias_y[0:N]).T)
+axs9[1].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_accbias_y) * (NEES_accbias_y <= CI1[1]))
+axs9[1].set(
+    title=f"Accbias Y NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs9[1].set_ylim([0, 20])
+
+axs9[2].plot(t, (NEES_accbias_z[0:N]).T)
+axs9[2].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+insideCI = np.mean((CI1[0] <= NEES_accbias_z) * (NEES_accbias_z <= CI1[1]))
+axs9[2].set(
+    title=f"Accbias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+axs9[2].set_ylim([0, 20])
 
 print("--- %s seconds ---" % (time.time() - start_time))
 # %%
