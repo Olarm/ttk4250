@@ -111,13 +111,13 @@ z_gyroscope = loaded_data["zGyro"].T
 accuracy_GNSS = loaded_data['GNSSaccuracy'].ravel()
 
 dt = np.mean(np.diff(timeIMU))
-steps = len(z_acceleration)
-gnss_steps = len(z_GNSS)
+steps = len(z_acceleration) //9
+gnss_steps = len(z_GNSS)    //9
 
 # %% Measurement noise
 # Continous noise
-cont_gyro_noise_std = 11*4.36e-5  #4.36e-5# TODO
-cont_acc_noise_std = 10*1.167e-3  #1.167e-3# TODO
+cont_gyro_noise_std = 1*4.36e-5  #4.36e-5# TODO
+cont_acc_noise_std = 0.8*1.167e-3  #1.167e-3# TODO
 
 # Discrete sample noise at simulation rate used
 rate_std = cont_gyro_noise_std*np.sqrt(1/dt)
@@ -131,11 +131,14 @@ acc_bias_driving_noise_std = 4e-4# TODO
 cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
 
 # Position and velocity measurement
-p_std = np.diag(np.array([0.1, 0.2, 0.3])**2) / np.mean(accuracy_GNSS)
+p_std = np.array([0.1, 0.2, 0.4])
+p_std = np.diag(p_std)**2
 
-p_acc = 1e-6
 
-p_gyro = 1e-4
+p_acc = 1e-12
+
+p_gyro = 1e-12
+
 
 # %% Estimator
 eskf = ESKF(
