@@ -108,8 +108,8 @@ z_gyroscope = loaded_data["zGyro"].T
 
 
 dt = np.mean(np.diff(timeIMU))
-steps = len(z_acceleration)     //20  
-gnss_steps = len(z_GNSS)        //20
+steps = len(z_acceleration)     
+gnss_steps = len(z_GNSS)        
 
 # %% Measurement noise
 # IMU noise values for STIM300, based on datasheet and simulation sample rate
@@ -162,6 +162,10 @@ P_pred = np.zeros((steps, 15, 15))
 delta_x = np.zeros((steps, 15))
 
 NIS = np.zeros(gnss_steps)
+NIS_x = np.zeros(gnss_steps)
+NIS_y = np.zeros(gnss_steps)
+NIS_z = np.zeros(gnss_steps)
+NIS_xy = np.zeros(gnss_steps)
 
 NEES_all = np.zeros(steps)
 NEES_pos = np.zeros(steps)
@@ -205,7 +209,13 @@ doGNSS: bool = True  # TODO: Set this to False if you want to check that the pre
 GNSSk: int = 0  # keep track of current step in GNSS measurements
 for k in tqdm.trange(N):
     if doGNSS and timeIMU[k] >= timeGNSS[GNSSk]:
-        NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO:
+        (
+            NIS[GNSSk], 
+            NIS_x[GNSSk],
+            NIS_y[GNSSk],
+            NIS_z[GNSSk],
+            NIS_xy[GNSSk],
+        ) = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO:
         x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO:
         
         assert np.all(np.isfinite(P_est[k])), f"Not finite P_est at index {k}"

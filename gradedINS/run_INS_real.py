@@ -111,32 +111,31 @@ z_gyroscope = loaded_data["zGyro"].T
 accuracy_GNSS = loaded_data['GNSSaccuracy'].ravel()
 
 dt = np.mean(np.diff(timeIMU))
-steps = len(z_acceleration) //9
-gnss_steps = len(z_GNSS) //9
+steps = len(z_acceleration)
+gnss_steps = len(z_GNSS)
 
 # %% Measurement noise
 # Continous noise
-cont_gyro_noise_std = 0.1*4.36e-5  #4.36e-5# TODO
-cont_acc_noise_std = 0.1*1.167e-3  #1.167e-3# TODO
+cont_gyro_noise_std = 11*4.36e-5  #4.36e-5# TODO
+cont_acc_noise_std = 10*1.167e-3  #1.167e-3# TODO
 
 # Discrete sample noise at simulation rate used
 rate_std = cont_gyro_noise_std*np.sqrt(1/dt)
 acc_std  = cont_acc_noise_std*np.sqrt(1/dt)
 
 # Bias values
-rate_bias_driving_noise_std = 5e-5# TODO
+rate_bias_driving_noise_std = 9e-3# TODO
 cont_rate_bias_driving_noise_std = rate_bias_driving_noise_std/np.sqrt(1/dt)
 
-acc_bias_driving_noise_std = 4e-3# TODO
+acc_bias_driving_noise_std = 4e-4# TODO
 cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
 
 # Position and velocity measurement
-p_std = np.array([0.4, 0.5, 0.6])
+p_std = np.diag(np.array([0.1, 0.2, 0.3])**2) / np.mean(accuracy_GNSS)
 
+p_acc = 1e-6
 
-p_acc = 1e-16
-
-p_gyro = 1e-16
+p_gyro = 1e-4
 
 # %% Estimator
 eskf = ESKF(
@@ -148,7 +147,7 @@ eskf = ESKF(
     p_gyro,
     S_a = S_a, # set the accelerometer correction matrix
     S_g = S_g, # set the gyro correction matrix,
-    debug=True # False to avoid expensive debug checks
+    debug=False # False to avoid expensive debug checks
 )
 
 
@@ -187,7 +186,7 @@ GNSSk = 0
 
 for k in tqdm.trange(N):
     if timeIMU[k] >= timeGNSS[GNSSk]:
-        R_GNSS = np.diag(p_std ** 2) * accuracy_GNSS[GNSSk] # TODO: Current GNSS covariance
+        R_GNSS = p_std * accuracy_GNSS[GNSSk] # TODO: Current GNSS covariance
         
         (
             NIS[GNSSk], 
@@ -231,7 +230,8 @@ plt.grid()
 t = np.linspace(0, dt*(N-1), N)
 eul = np.apply_along_axis(quaternion_to_euler, 1, x_est[:N, ATT_IDX])
 
-fig2, axs2 = plt.subplots(5, 1)
+fig2, axs2 = plt.subplots(5, 1, figsize=(10,8))
+fig2.tight_layout()
 
 axs2[0].plot(t, x_est[0:N, POS_IDX])
 axs2[0].set(ylabel='NED position [m]')
@@ -259,6 +259,8 @@ axs2[4].legend(['x', 'y', 'z'])
 plt.grid()
 
 fig2.suptitle('States estimates')
+plt.savefig("report/figures/real_2.eps", format="eps")
+
 
 # %% Consistency
 confprob = 0.95
@@ -281,6 +283,7 @@ insideCIz = np.mean((CI1[0] <= NIS_z[:GNSSk]) * (NIS_z[:GNSSk] <= CI1[1]))
 insideCIxy = np.mean((CI2[0] <= NIS_xy[:GNSSk]) * (NIS_xy[:GNSSk] <= CI2[1]))
 
 fig3, axs3 = plt.subplots(5, 1, clear=True, figsize=(10,8))
+fig3.tight_layout()
 
 axs3[0].plot(NIS[:GNSSk])
 axs3[0].plot(np.array([0, N-1]) * dt, (CI3@np.ones((1, 2))).T)
