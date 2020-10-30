@@ -108,36 +108,36 @@ z_gyroscope = loaded_data["zGyro"].T
 
 
 dt = np.mean(np.diff(timeIMU))
-steps = len(z_acceleration) //10
-gnss_steps = len(z_GNSS) //10
+steps = len(z_acceleration)
+gnss_steps = len(z_GNSS)
 
 # %% Measurement noise
 # IMU noise values for STIM300, based on datasheet and simulation sample rate
 # Continous noise
 # TODO: What to remove here?
-cont_gyro_noise_std = 7*4.36e-5  # (rad/s)/sqrt(Hz)
-cont_acc_noise_std = 3*1.167e-3  # (m/s**2)/sqrt(Hz)
+cont_gyro_noise_std = 12*4.36e-5  # (rad/s)/sqrt(Hz)
+cont_acc_noise_std = 13*1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
 rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)
 acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)
 
 # Bias values
-rate_bias_driving_noise_std = 5e-3#5e-5
+rate_bias_driving_noise_std = 9e-3#5e-5
 cont_rate_bias_driving_noise_std = (
     (1 / 3) * rate_bias_driving_noise_std / np.sqrt(1 / dt)
 )
 
-acc_bias_driving_noise_std = 3e-4#4e-3
+acc_bias_driving_noise_std = 4e-4#4e-3
 cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)
 
 # Position and velocity measurement
-p_std = np.array([0.7, 0.8, 1.0]) #np.array([0.3, 0.3, 0.5])  # Measurement noise
+p_std = np.array([0.4, 0.5, 0.6]) #np.array([0.3, 0.3, 0.5])  # Measurement noise
 R_GNSS = np.diag(p_std ** 2)
 
-p_acc = 1e-8
+p_acc = 1e-6
 
-p_gyro = 1e-8
+p_gyro = 1e-4
 
 # %% Estimator
 eskf = ESKF(
@@ -249,9 +249,12 @@ ax = plt.axes(projection="3d")
 
 ax.plot3D(x_est[:N, 1], x_est[:N, 0], -x_est[:N, 2])
 ax.plot3D(z_GNSS[:GNSSk, 1], z_GNSS[:GNSSk, 0], -z_GNSS[:GNSSk, 2])
+ax.plot3D(x_true[:N, 1], x_true[:N, 0], -x_true[:N, 2])
 ax.set_xlabel("East [m]")
 ax.set_ylabel("North [m]")
 ax.set_zlabel("Altitude [m]")
+
+plt.savefig("report/figures/sim_1.eps", format="eps")
 
 
 # state estimation
@@ -259,7 +262,7 @@ t = np.linspace(0, dt * (N - 1), N)
 eul = np.apply_along_axis(quaternion_to_euler, 1, x_est[:N, ATT_IDX])
 eul_true = np.apply_along_axis(quaternion_to_euler, 1, x_true[:N, ATT_IDX])
 
-fig2, axs2 = plt.subplots(5, 1, num=2, clear=True)
+fig2, axs2 = plt.subplots(5, 1, num=2, clear=True, figsize=(10,10))
 
 axs2[0].plot(t, x_est[:N, POS_IDX])
 axs2[0].set(ylabel="NED position [m]")
@@ -287,9 +290,11 @@ axs2[4].legend(["$x$", "$y$", "$z$"])
 
 
 fig2.suptitle("States estimates")
+plt.savefig("report/figures/sim_2.eps", format="eps")
+
 
 # state error plots
-fig3, axs3 = plt.subplots(5, 1, num=3, clear=True)
+fig3, axs3 = plt.subplots(5, 1, num=3, clear=True, figsize=(10,10))
 delta_x_RMSE = np.sqrt(np.mean(delta_x[:N] ** 2, axis=0))  # TODO use this in legends
 axs3[0].plot(t, delta_x[:N, POS_IDX])
 axs3[0].set(ylabel="NED position error [m]")
@@ -345,10 +350,14 @@ axs3[4].legend(
 )
 
 fig3.suptitle("States estimate errors")
+plt.savefig("report/figures/sim_3.eps", format="eps")
+
 
 # Error distance plot
-fig4, axs4 = plt.subplots(2, 1, num=4, clear=True)
+fig4, axs4 = plt.subplots(2, 1, num=4, clear=True, figsize=(10,4))
 
+estimation_error = np.sqrt(np.mean(np.sum(delta_x[:N, POS_IDX]**2, axis=1)))
+measurement_error = np.sqrt(np.mean(np.sum((x_true[99:N:100, POS_IDX] - z_GNSS[:GNSSk])**2, axis=1)))
 axs4[0].plot(t, np.linalg.norm(delta_x[:N, POS_IDX], axis=1))
 axs4[0].plot(
     np.arange(0, N, 100) * dt,
@@ -357,14 +366,17 @@ axs4[0].plot(
 axs4[0].set(ylabel="Position error [m]")
 axs4[0].legend(
     [
-        f"Estimation error ({np.sqrt(np.mean(np.sum(delta_x[:N, POS_IDX]**2, axis=1)))})",
-        f"Measurement error ({np.sqrt(np.mean(np.sum((x_true[99:N:100, POS_IDX] - z_GNSS[GNSSk - 1])**2, axis=1)))})",
+        f"Estimation error ({estimation_error})",
+        f"Measurement error ({measurement_error})",
     ]
 )
 
+velocity_rmse = np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=1)))
 axs4[1].plot(t, np.linalg.norm(delta_x[:N, VEL_IDX], axis=1))
 axs4[1].set(ylabel="Speed error [m/s]")
-axs4[1].legend([f"RMSE: {np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=0)))}"])
+axs4[1].legend([f"RMSE: {velocity_rmse}"])
+plt.savefig("report/figures/sim_4.eps", format="eps")
+
 
 
 # %% Consistency
@@ -373,7 +385,8 @@ CI15 = np.array(scipy.stats.chi2.interval(confprob, 15)).reshape((2, 1))
 CI3 = np.array(scipy.stats.chi2.interval(confprob, 3)).reshape((2, 1))
 CI1 = np.array(scipy.stats.chi2.interval(confprob, 1)).reshape((2, 1))
 
-fig5, axs5 = plt.subplots(7, 1, num=5, clear=True)
+fig5, axs5 = plt.subplots(7, 1, num=5, clear=True, figsize=(10,10))
+fig5.tight_layout()
 
 axs5[0].plot(t, (NEES_all[:N]).T)
 axs5[0].plot(np.array([0, N - 1]) * dt, (CI15 @ np.ones((1, 2))).T)
@@ -430,6 +443,8 @@ axs5[6].set(
     title=f"NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs5[6].set_ylim([0, 20])
+plt.savefig("report/figures/sim_5.eps", format="eps")
+
 
 # boxplot
 fig6, axs6 = plt.subplots(1, 3)
@@ -448,8 +463,10 @@ gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
 axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
 axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
 plt.grid()
+plt.savefig("report/figures/sim_6.eps", format="eps", figsize=(10,10))
 
-fig7, axs7 = plt.subplots(3, 1, num=7, clear=True)
+
+fig7, axs7 = plt.subplots(3, 1, num=7, clear=True, sharex=True)
 
 axs7[0].plot(t, (NEES_pos_x[0:N]).T)
 axs7[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
@@ -475,7 +492,9 @@ axs7[2].set(
 )
 axs7[2].set_ylim([0, 20])
 
-fig8, axs8 = plt.subplots(3, 1, num=8, clear=True)
+
+fig8, axs8 = plt.subplots(3, 1, num=8, clear=True, figsize=(10,6))
+fig8.tight_layout()
 
 axs8[0].plot(t, (NEES_gyrobias_x[0:N]).T)
 axs8[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
@@ -500,8 +519,11 @@ axs8[2].set(
     title=f"Gyrobias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs8[2].set_ylim([0, 20])
+plt.savefig("report/figures/sim_8.eps", format="eps")
 
-fig9, axs9 = plt.subplots(3, 1, num=9, clear=True)
+
+
+fig9, axs9 = plt.subplots(3, 1, num=9, clear=True, figsize=(10,10))
 
 axs9[0].plot(t, (NEES_accbias_x[0:N]).T)
 axs9[0].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
@@ -526,6 +548,8 @@ axs9[2].set(
     title=f"Accbias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs9[2].set_ylim([0, 20])
+plt.savefig("report/figures/sim_9.eps", format="eps")
+
 
 print("--- %s seconds ---" % (time.time() - start_time))
 # %%
