@@ -111,13 +111,13 @@ z_gyroscope = loaded_data["zGyro"].T
 accuracy_GNSS = loaded_data['GNSSaccuracy'].ravel()
 
 dt = np.mean(np.diff(timeIMU))
-steps = 500#len(z_acceleration)
-gnss_steps = len(z_GNSS)
+steps = len(z_acceleration) //9
+gnss_steps = len(z_GNSS) //9
 
 # %% Measurement noise
 # Continous noise
-cont_gyro_noise_std = 4.36e-5# TODO
-cont_acc_noise_std = 1.167e-3# TODO
+cont_gyro_noise_std = 0.1*4.36e-5  #4.36e-5# TODO
+cont_acc_noise_std = 0.1*1.167e-3  #1.167e-3# TODO
 
 # Discrete sample noise at simulation rate used
 rate_std = cont_gyro_noise_std*np.sqrt(1/dt)
@@ -131,9 +131,12 @@ acc_bias_driving_noise_std = 4e-3# TODO
 cont_acc_bias_driving_noise_std = acc_bias_driving_noise_std/np.sqrt(1/dt)
 
 # Position and velocity measurement
-p_acc = 1e-3
+p_std = np.array([0.4, 0.5, 0.6])
 
-p_gyro = 1e-3
+
+p_acc = 1e-16
+
+p_gyro = 1e-16
 
 # %% Estimator
 eskf = ESKF(
@@ -157,6 +160,10 @@ x_pred = np.zeros((steps, 16))
 P_pred = np.zeros((steps, 15, 15))
 
 NIS = np.zeros(gnss_steps)
+NIS_x = np.zeros(gnss_steps)
+NIS_y = np.zeros(gnss_steps)
+NIS_z = np.zeros(gnss_steps)
+NIS_xy = np.zeros(gnss_steps)
 
 # %% Initialise
 x_pred[0, POS_IDX] = np.array([0, 0, 0]) # starting 5 metres above ground
@@ -180,9 +187,16 @@ GNSSk = 0
 
 for k in tqdm.trange(N):
     if timeIMU[k] >= timeGNSS[GNSSk]:
-        R_GNSS = np.eye(3) * accuracy_GNSS[GNSSk] * z_GNSS[GNSSk] # TODO: Current GNSS covariance
-        NIS[GNSSk] = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm)# TODO
-
+        R_GNSS = np.diag(p_std ** 2) * accuracy_GNSS[GNSSk] # TODO: Current GNSS covariance
+        
+        (
+            NIS[GNSSk], 
+            NIS_x[GNSSk],
+            NIS_y[GNSSk],
+            NIS_z[GNSSk],
+            NIS_xy[GNSSk],
+        ) = eskf.NIS_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm)
+        
         x_est[k], P_est[k] = eskf.update_GNSS_position(x_pred[k], P_pred[k], z_GNSS[GNSSk], R_GNSS, lever_arm) # TODO
         if eskf.debug:
             assert np.all(np.isfinite(P_est[k])), f"Not finite P_pred at index {k}"
@@ -206,7 +220,7 @@ fig1 = plt.figure(1)
 ax = plt.axes(projection='3d')
 
 ax.plot3D(x_est[0:N, 1], x_est[0:N, 0], -x_est[0:N, 2])
-ax.plot3D(z_GNSS[0:N, 1], z_GNSS[0:N, 0], -z_GNSS[0:N, 2])
+ax.plot3D(z_GNSS[0:GNSSk, 1], z_GNSS[0:GNSSk, 0], -z_GNSS[0:GNSSk, 2])
 ax.set_xlabel('East [m]')
 ax.set_xlabel('North [m]')
 ax.set_xlabel('Altitude [m]')
@@ -248,15 +262,57 @@ fig2.suptitle('States estimates')
 
 # %% Consistency
 confprob = 0.95
+CI1 = np.array(scipy.stats.chi2.interval(confprob, 1)).reshape((2, 1))
+CI1N = np.array(scipy.stats.chi2.interval(confprob, 1 * N)) / N
+CI2 = np.array(scipy.stats.chi2.interval(confprob, 2)).reshape((2, 1))
+CI2N = np.array(scipy.stats.chi2.interval(confprob, 2 * N)) / N
 CI3 = np.array(scipy.stats.chi2.interval(confprob, 3)).reshape((2, 1))
+CI3N = np.array(scipy.stats.chi2.interval(confprob, 3 * N)) / N
 
-fig3 = plt.figure()
+ANIS_x = NIS_x[:GNSSk].mean()
+ANIS_y = NIS_y[:GNSSk].mean()
+ANIS_z = NIS_z[:GNSSk].mean()
+ANIS_xy = NIS_xy[:GNSSk].mean()
 
-plt.plot(NIS[:GNSSk])
-plt.plot(np.array([0, N-1]) * dt, (CI3@np.ones((1, 2))).T)
-insideCI = np.mean((CI3[0] <= NIS) * (NIS <= CI3[1]))
-plt.title(f'NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)')
-plt.grid()
+insideCI = np.mean((CI3[0] <= NIS[:GNSSk]) * (NIS[:GNSSk] <= CI3[1]))
+insideCIx = np.mean((CI1[0] <= NIS_x[:GNSSk]) * (NIS_x[:GNSSk] <= CI1[1]))
+insideCIy = np.mean((CI1[0] <= NIS_y[:GNSSk]) * (NIS_y[:GNSSk] <= CI1[1]))
+insideCIz = np.mean((CI1[0] <= NIS_z[:GNSSk]) * (NIS_z[:GNSSk] <= CI1[1]))
+insideCIxy = np.mean((CI2[0] <= NIS_xy[:GNSSk]) * (NIS_xy[:GNSSk] <= CI2[1]))
+
+fig3, axs3 = plt.subplots(5, 1, clear=True, figsize=(10,8))
+
+axs3[0].plot(NIS[:GNSSk])
+axs3[0].plot(np.array([0, N-1]) * dt, (CI3@np.ones((1, 2))).T)
+axs3[0].set(
+    title=f"NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
+)
+
+axs3[1].plot(NIS_x[:GNSSk])
+axs3[1].plot(np.array([0, N-1]) * dt, (CI1@np.ones((1, 2))).T)
+axs3[1].set(
+    title=f"NIS ({100 *  insideCIx:.1f} inside {100 * confprob} confidence interval)"
+)
+
+axs3[2].plot(NIS_y[:GNSSk])
+axs3[2].plot(np.array([0, N-1]) * dt, (CI1@np.ones((1, 2))).T)
+axs3[2].set(
+    title=f"NIS ({100 *  insideCIy:.1f} inside {100 * confprob} confidence interval)"
+)
+
+axs3[3].plot(NIS_xy[:GNSSk])
+axs3[3].plot(np.array([0, N-1]) * dt, (CI2@np.ones((1, 2))).T)
+axs3[3].set(
+    title=f"NIS ({100 *  insideCIxy:.1f} inside {100 * confprob} confidence interval)"
+)
+
+axs3[4].plot(NIS_z[:GNSSk])
+axs3[4].plot(np.array([0, N-1]) * dt, (CI1@np.ones((1, 2))).T)
+axs3[4].set(
+    title=f"NIS ({100 *  insideCIz:.1f} inside {100 * confprob} confidence interval)"
+)
+
+plt.savefig("report/figures/real_3.eps", format="eps")
 
 # %% box plots
 fig4 = plt.figure()
