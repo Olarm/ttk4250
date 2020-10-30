@@ -645,10 +645,15 @@ class ESKF:
 
         # TODO: Calculate NIS
         NIS = v.T @ la.inv(S) @ v
+        NIS_x = v[CatSlice(start=0, stop=1)].T @ la.solve(S[CatSlice(start=0, stop=1)**2], v[CatSlice(start=0, stop=1)])
+        NIS_y = v[CatSlice(start=1, stop=2)].T @ la.solve(S[CatSlice(start=1, stop=2)**2], v[CatSlice(start=1, stop=2)])
+        NIS_z = v[CatSlice(start=2, stop=3)].T @ la.solve(S[CatSlice(start=2, stop=3)**2], v[CatSlice(start=2, stop=3)])
+        
+        NIS_xy = v[CatSlice(start=0, stop=2)].T @ la.solve(S[CatSlice(start=0, stop=2)**2], v[CatSlice(start=0, stop=2)])
 
         assert NIS >= 0, "EKSF.NIS_GNSS_positionNIS: NIS not positive"
 
-        return NIS
+        return NIS, NIS_x, NIS_y, NIS_z, NIS_xy
 
     @classmethod
     def delta_x(cls, x_nominal: np.ndarray, x_true: np.ndarray,) -> np.ndarray:
