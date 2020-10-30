@@ -30,12 +30,12 @@ A short outline of the initial tuning process is listed here along with a discus
 
 \begin{enumerate}
 	\item Tune measurement noise until the GNSS track is followed
-	\item Tune process noise to get a decent result from NEESes
+	\item Tune process noise to get a decent NEES results
 	\item Tune IMU bias driving noises to reduce trends in gyro and acceleration NEES bias
 	\item Tune individual measurement and process noise parameters to fit individual IMU NEES axis in the middle of interval
 \end{enumerate}
 
-An observation made was that certain larges deviations occured in the NEESes. 
+An observation made was that certain larger deviations occured in the NEESes. 
 This appears to be due to larger then normal changes in position and attitude. 
 Due to the infrequent GNSS updates, the process noise was increased while
 the measurement noises was decreased to try to better account for these occurrences.
@@ -45,10 +45,10 @@ by reducing overfitting in parts of the track.
 
 The tuning appeared in large part to be a bias-variance tradeoff problem.
 Our experience was that reducing the variance during fast maneuvers led to overfitting elsewhere.
-Likewise acceptable bias-variance on most of the track tended to cause underfitting during fast maneuvers.
+Likewise acceptable bias-variance on most of the track tended to cause large underfitting during large state changes.
 From a practical point of view we would argue that it makes more sense to track the harder parts better
 and accept some overfitting elsewhere if the alternative is to have huge errors in certain parts of the track.
-There is ofcourse a tradeoff and 
+This is of course a tradeoff and also there are probably situations where an opposite argument could be made.
 
 \begin{tabular}{ |p{5cm}||p{3cm}|p{3cm}|  }
 	\hline
@@ -80,23 +80,8 @@ There is ofcourse a tradeoff and
     \centering
     \includegraphics[clip, trim= 0cm 0cm 0cm 0cm, width = \textwidth]{figures/sim_3.eps}
     \caption{True error states}
-    \label{fig:23states}
-\end{figure}
-\begin{figure}
-    \centering
-    \includegraphics[clip, trim= 0cm 0cm 0cm 0cm, width = \textwidth]{figures/sim_4.eps}
-    \caption{Error distance}
-    \label{fig:23state_error}
-\end{figure}
-\begin{figure}
-    \centering
-    \includegraphics[clip, trim= 0cm 0cm 0cm 0cm, width = \textwidth]{figures/sim_5.eps}
+	\label{fig:23states}
+	\includegraphics[clip, trim= 0cm 0cm 0cm 0cm, width = \textwidth]{figures/sim_10.eps}
     \caption{NEESes and NIS}
-    \label{fig:23states}
-\end{figure}
-\begin{figure}
-    \centering
-    \includegraphics[clip, trim= 0cm 0cm 0cm 0cm, width = \textwidth]{figures/sim_8.eps}
-    \caption{Assignment 2. Task 3. States}
     \label{fig:23states}
 \end{figure}
