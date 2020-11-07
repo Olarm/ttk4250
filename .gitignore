@@ -1,7 +1,6 @@
 *.swp
 .vscode
 *.pyc
-*.mat
 .DS_Store
 .spyproject
 .idea

@@ -109,26 +109,26 @@ z_gyroscope = loaded_data["zGyro"].T
 
 dt = np.mean(np.diff(timeIMU))
 steps = len(z_acceleration)     
-gnss_steps = len(z_GNSS)        
+gnss_steps = len(z_GNSS)
 
 # %% Measurement noise
 # IMU noise values for STIM300, based on datasheet and simulation sample rate
 # Continous noise
 # TODO: What to remove here?
 cont_gyro_noise_std = 12*4.36e-5  # (rad/s)/sqrt(Hz)
-cont_acc_noise_std = 13*1.167e-3  # (m/s**2)/sqrt(Hz)
+cont_acc_noise_std = 13*1.167e-3  #1.167e-3  # (m/s**2)/sqrt(Hz)
 
 # Discrete sample noise at simulation rate used
 rate_std = 0.5 * cont_gyro_noise_std * np.sqrt(1 / dt)
 acc_std = 0.5 * cont_acc_noise_std * np.sqrt(1 / dt)
 
 # Bias values
-rate_bias_driving_noise_std = 9e-3#5e-5
+rate_bias_driving_noise_std = 9e-3
 cont_rate_bias_driving_noise_std = (
     (1 / 3) * rate_bias_driving_noise_std / np.sqrt(1 / dt)
 )
 
-acc_bias_driving_noise_std = 4e-4#4e-3
+acc_bias_driving_noise_std = 4e-4
 cont_acc_bias_driving_noise_std = 6 * acc_bias_driving_noise_std / np.sqrt(1 / dt)
 
 # Position and velocity measurement
@@ -191,11 +191,11 @@ x_pred[0, VEL_IDX] = np.array([20, 0, 0])  # starting at 20 m/s due north
 x_pred[0, 6] = 1  # no initial rotation: nose to North, right to East, and belly down
 
 # These have to be set reasonably to get good results
-P_pred[0][POS_IDX ** 2] = np.eye(3)#1e-3 * np.eye(3)# TODO
-P_pred[0][VEL_IDX ** 2] = np.eye(3) #1e-3 * np.eye(3)# TODO
-P_pred[0][ERR_ATT_IDX ** 2] = np.eye(3) #1e-3 * np.eye(3)# TODO # error rotation vector (not quat)
-P_pred[0][ERR_ACC_BIAS_IDX ** 2] = np.eye(3)#1e-2 * np.eye(3)# TODO
-P_pred[0][ERR_GYRO_BIAS_IDX ** 2] = np.eye(3)#1e-6 * np.eye(3)# TODO
+P_pred[0][POS_IDX ** 2] = 1e-3 * np.eye(3)# TODO
+P_pred[0][VEL_IDX ** 2] = 1e-3 * np.eye(3)# TODO
+P_pred[0][ERR_ATT_IDX ** 2] = 1e-3 * np.eye(3)# TODO # error rotation vector (not quat)
+P_pred[0][ERR_ACC_BIAS_IDX ** 2] = 1e-2 * np.eye(3)# TODO
+P_pred[0][ERR_GYRO_BIAS_IDX ** 2] = 1e-6 * np.eye(3)# TODO
 
 # %% Test: you can run this cell to test your implementation
 #dummy = eskf.predict(x_pred[0], P_pred[0], z_acceleration[0], z_gyroscope[0], dt)
@@ -264,7 +264,7 @@ ax.set_xlabel("East [m]")
 ax.set_ylabel("North [m]")
 ax.set_zlabel("Altitude [m]")
 
-plt.savefig("report/figures/sim_1.eps", format="eps")
+#plt.savefig("report/figures/sim_1.eps", format="eps")
 
 
 # state estimation
@@ -391,7 +391,7 @@ velocity_rmse = np.sqrt(np.mean(np.sum(delta_x[:N, VEL_IDX]**2, axis=1)))
 axs4[1].plot(t, np.linalg.norm(delta_x[:N, VEL_IDX], axis=1))
 axs4[1].set(ylabel="Speed error [m/s]")
 axs4[1].legend([f"RMSE: {velocity_rmse}"])
-plt.savefig("report/figures/sim_4.eps", format="eps")
+#plt.savefig("report/figures/sim_4.eps", format="eps")
 
 
 
@@ -459,7 +459,7 @@ axs5[6].set(
     title=f"NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs5[6].set_ylim([0, 20])
-plt.savefig("report/figures/sim_5.eps", format="eps")
+#plt.savefig("report/figures/sim_5.eps", format="eps")
 
 
 # boxplot
@@ -479,7 +479,8 @@ gauss_compare_3  = np.sum(np.random.randn(3, N)**2, axis=0)
 axs6[2].boxplot([NEES_pos[0:N].T, NEES_vel[0:N].T, NEES_att[0:N].T, NEES_accbias[0:N].T, NEES_gyrobias[0:N].T, gauss_compare_3], notch=True)
 axs6[2].legend(['NEES pos', 'NEES vel', 'NEES att', 'NEES accbias', 'NEES gyrobias', 'gauss (3 dim)'])
 plt.grid()
-plt.savefig("report/figures/sim_6.eps", format="eps", figsize=(10,10))
+
+#plt.savefig("report/figures/sim_6.eps", format="eps", figsize=(10,10))
 
 
 fig7, axs7 = plt.subplots(3, 1, num=7, clear=True, sharex=True)
@@ -535,7 +536,7 @@ axs8[2].set(
     title=f"Gyrobias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs8[2].set_ylim([0, 20])
-plt.savefig("report/figures/sim_8.eps", format="eps")
+#plt.savefig("report/figures/sim_8.eps", format="eps")
 
 
 
@@ -564,9 +565,9 @@ axs9[2].set(
     title=f"Accbias Z NEES ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs9[2].set_ylim([0, 20])
-plt.savefig("report/figures/sim_9.eps", format="eps")
+#plt.savefig("report/figures/sim_9.eps", format="eps")
 
-fig10, axs10 = plt.subplots(5, 1, num=10, clear=True, figsize=(10,8))
+fig10, axs10 = plt.subplots(4, 1, num=10, clear=True, figsize=(10,5))
 fig10.tight_layout()
 
 axs10[0].plot(t, (NEES_all[:N]).T)
@@ -601,23 +602,23 @@ axs10[2].set(
 )
 axs10[2].set_ylim([0, 20])
 
-axs10[3].plot(t, (NEES_gyrobias_x[0:N]).T)
-axs10[3].plot(t, (NEES_gyrobias_y[0:N]).T)
-axs10[3].plot(t, (NEES_gyrobias_z[0:N]).T)
-axs10[3].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
-insideCI_x = np.mean((CI1[0] <= NEES_gyrobias_x) * (NEES_gyrobias_x <= CI1[1]))
-insideCI_y = np.mean((CI1[0] <= NEES_gyrobias_y) * (NEES_gyrobias_y <= CI1[1]))
-insideCI_z = np.mean((CI1[0] <= NEES_gyrobias_z) * (NEES_gyrobias_z <= CI1[1]))
-axs10[3].set(
-    title=f"Gyro bias NEES inside {100 * confprob} confidence interval:  $\phi$ = {100 *  insideCI_x:.1f},  "+r"$\theta$"+f" = {100 *  insideCI_y:.1f},  $\psi$ = {100 *  insideCI_z:.1f}"
-)
-axs10[3].legend([r"$\phi$", r"$\theta$", r"$\psi$"])
-axs10[3].set_ylim([0, 20])
+#axs10[3].plot(t, (NEES_gyrobias_x[0:N]).T)
+#axs10[3].plot(t, (NEES_gyrobias_y[0:N]).T)
+#axs10[3].plot(t, (NEES_gyrobias_z[0:N]).T)
+#axs10[3].plot(np.array([0, N - 1]) * dt, (CI1 @ np.ones((1, 2))).T)
+#insideCI_x = np.mean((CI1[0] <= NEES_gyrobias_x) * (NEES_gyrobias_x <= CI1[1]))
+#insideCI_y = np.mean((CI1[0] <= NEES_gyrobias_y) * (NEES_gyrobias_y <= CI1[1]))
+#insideCI_z = np.mean((CI1[0] <= NEES_gyrobias_z) * (NEES_gyrobias_z <= CI1[1]))
+#axs10[3].set(
+#    title=f"Gyro bias NEES inside {100 * confprob} confidence interval:  $\phi$ = {100 *  insideCI_x:.1f},  "+r"$\theta$"+f" = {100 *  insideCI_y:.1f},  $\psi$ = {100 *  insideCI_z:.1f}"
+#)
+#axs10[3].legend([r"$\phi$", r"$\theta$", r"$\psi$"])
+#axs10[3].set_ylim([0, 20])
 
-axs10[4].plot(NIS[:GNSSk])
-axs10[4].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
+axs10[3].plot(NIS[:GNSSk])
+axs10[3].plot(np.array([0, N - 1]) * dt, (CI3 @ np.ones((1, 2))).T)
 insideCI = np.mean((CI3[0] <= NIS) * (NIS <= CI3[1]))
-axs10[4].set(
+axs10[3].set(
     title=f"NIS ({100 *  insideCI:.1f} inside {100 * confprob} confidence interval)"
 )
 axs10[3].set_ylim([0, 20])
