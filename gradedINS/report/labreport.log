@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2020.7.29)  30 OCT 2020 20:28
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2020.7.29)  31 OCT 2020 02:57
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -778,6 +778,18 @@ LaTeX Warning: Label `fig:23states' multiply defined.
 
 LaTeX Warning: Label `fig:23states@cref' multiply defined.
 
+
+LaTeX Warning: Label `fig:23states' multiply defined.
+
+
+LaTeX Warning: Label `fig:23states@cref' multiply defined.
+
+
+LaTeX Warning: Label `fig:23states' multiply defined.
+
+
+LaTeX Warning: Label `fig:23states@cref' multiply defined.
+
 ))
 \openout1 = `labreport.aux'.
 
@@ -880,80 +892,113 @@ LaTeX Info: Redefining \nameref on input line 6.
 
 \openout2 = `part1.aux'.
 
- (/Users/olamoen/dev/sensorfusion2020/gradedINS/report/part1.tex [1
-
-
-{/usr/local/texlive/2020/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-LaTeX Font Info:    Trying to load font information for U+msa on input line 53.
+ (/Users/olamoen/dev/sensorfusion2020/gradedINS/report/part1.tex
+LaTeX Font Info:    Trying to load font information for U+msa on input line 30.
  (/usr/local/texlive/2020/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 53.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 30.
  (/usr/local/texlive/2020/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-Overfull \hbox (7.9803pt too wide) in paragraph at lines 53--71
+Overfull \hbox (79.11218pt too wide) in paragraph at lines 49--64
 [][] 
  []
 
 Package epstopdf Info: Source file: <figures/sim_2.eps>
-(epstopdf)                    date: 2020-10-30 20:28:17
-(epstopdf)                    size: 152606 bytes
+(epstopdf)                    date: 2020-10-31 02:34:51
+(epstopdf)                    size: 448042 bytes
 (epstopdf)             Output file: <figures/sim_2-eps-converted-to.pdf>
-(epstopdf)                    date: 2020-10-30 20:28:19
-(epstopdf)                    size: 37795 bytes
+(epstopdf)                    date: 2020-10-31 02:34:53
+(epstopdf)                    size: 122520 bytes
 (epstopdf)             Command: <repstopdf --outfile=figures/sim_2-eps-converted-to.pdf figures/sim_2.eps>
-(epstopdf)             \includegraphics on input line 75.
+(epstopdf)             \includegraphics on input line 67.
 Package epstopdf Info: Output file is already uptodate.
-<figures/sim_2-eps-converted-to.pdf, id=59, 614.72661pt x 456.36497pt>
+<figures/sim_2-eps-converted-to.pdf, id=39, 607.18843pt x 456.36497pt>
 File: figures/sim_2-eps-converted-to.pdf Graphic file (type pdf)
 <use figures/sim_2-eps-converted-to.pdf>
-Package pdftex.def Info: figures/sim_2-eps-converted-to.pdf  used on input line 75.
-(pdftex.def)             Requested size: 360.0pt x 267.26141pt.
+Package pdftex.def Info: figures/sim_2-eps-converted-to.pdf  used on input line 67.
+(pdftex.def)             Requested size: 360.0pt x 270.59pt.
 Package epstopdf Info: Source file: <figures/sim_3.eps>
-(epstopdf)                    date: 2020-10-30 20:28:18
-(epstopdf)                    size: 183029 bytes
+(epstopdf)                    date: 2020-10-31 02:34:54
+(epstopdf)                    size: 1661107 bytes
 (epstopdf)             Output file: <figures/sim_3-eps-converted-to.pdf>
-(epstopdf)                    date: 2020-10-30 20:28:19
-(epstopdf)                    size: 44731 bytes
+(epstopdf)                    date: 2020-10-31 02:34:57
+(epstopdf)                    size: 439576 bytes
 (epstopdf)             Command: <repstopdf --outfile=figures/sim_3-eps-converted-to.pdf figures/sim_3.eps>
-(epstopdf)             \includegraphics on input line 81.
+(epstopdf)             \includegraphics on input line 70.
 Package epstopdf Info: Output file is already uptodate.
-<figures/sim_3-eps-converted-to.pdf, id=61, 603.90622pt x 465.9809pt>
+<figures/sim_3-eps-converted-to.pdf, id=41, 608.77437pt x 465.9809pt>
 File: figures/sim_3-eps-converted-to.pdf Graphic file (type pdf)
 <use figures/sim_3-eps-converted-to.pdf>
-Package pdftex.def Info: figures/sim_3-eps-converted-to.pdf  used on input line 81.
-(pdftex.def)             Requested size: 360.0pt x 277.79178pt.
-Package epstopdf Info: Source file: <figures/sim_10.eps>
-(epstopdf)                    date: 2020-10-30 20:28:24
-(epstopdf)                    size: 193861 bytes
-(epstopdf)             Output file: <figures/sim_10-eps-converted-to.pdf>
-(epstopdf)                    date: 2020-10-30 19:57:04
-(epstopdf)                    size: 250333 bytes
-(epstopdf)             Command: <repstopdf --outfile=figures/sim_10-eps-converted-to.pdf figures/sim_10.eps>
-(epstopdf)             \includegraphics on input line 84.
-runsystem(repstopdf --outfile=figures/sim_10-eps-converted-to.pdf figures/sim_10.eps)...executed safely (allowed).
+Package pdftex.def Info: figures/sim_3-eps-converted-to.pdf  used on input line 70.
+(pdftex.def)             Requested size: 360.0pt x 275.56627pt.
 
-Package epstopdf Info: Result file: <figures/sim_10-eps-converted-to.pdf>
-(epstopdf)                    date: 2020-10-30 20:28:26
-(epstopdf)                    size: 48665 bytes.
-<figures/sim_10-eps-converted-to.pdf, id=63, 699.52339pt x 573.15129pt>
+LaTeX Warning: Float too large for page by 2.81328pt on input line 73.
+
+[1
+
+
+{/usr/local/texlive/2020/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+Package epstopdf Info: Source file: <figures/sim_10.eps>
+(epstopdf)                    date: 2020-10-31 02:34:57
+(epstopdf)                    size: 722571 bytes
+(epstopdf)             Output file: <figures/sim_10-eps-converted-to.pdf>
+(epstopdf)                    date: 2020-10-31 02:35:00
+(epstopdf)                    size: 187930 bytes
+(epstopdf)             Command: <repstopdf --outfile=figures/sim_10-eps-converted-to.pdf figures/sim_10.eps>
+(epstopdf)             \includegraphics on input line 76.
+Package epstopdf Info: Output file is already uptodate.
+<figures/sim_10-eps-converted-to.pdf, id=50, 699.52339pt x 356.3413pt>
 File: figures/sim_10-eps-converted-to.pdf Graphic file (type pdf)
 <use figures/sim_10-eps-converted-to.pdf>
-Package pdftex.def Info: figures/sim_10-eps-converted-to.pdf  used on input line 84.
-(pdftex.def)             Requested size: 360.0pt x 294.97069pt.
+Package pdftex.def Info: figures/sim_10-eps-converted-to.pdf  used on input line 76.
+(pdftex.def)             Requested size: 360.0pt x 183.39003pt.
+Package epstopdf Info: Source file: <figures/real_2.eps>
+(epstopdf)                    date: 2020-10-31 01:45:20
+(epstopdf)                    size: 1453530 bytes
+(epstopdf)             Output file: <figures/real_2-eps-converted-to.pdf>
+(epstopdf)                    date: 2020-10-31 01:47:35
+(epstopdf)                    size: 346722 bytes
+(epstopdf)             Command: <repstopdf --outfile=figures/real_2-eps-converted-to.pdf figures/real_2.eps>
+(epstopdf)             \includegraphics on input line 79.
+Package epstopdf Info: Output file is already uptodate.
+<figures/real_2-eps-converted-to.pdf, id=52, 728.35112pt x 562.05988pt>
+File: figures/real_2-eps-converted-to.pdf Graphic file (type pdf)
+<use figures/real_2-eps-converted-to.pdf>
+Package pdftex.def Info: figures/real_2-eps-converted-to.pdf  used on input line 79.
+(pdftex.def)             Requested size: 360.0pt x 277.80455pt.
+Package epstopdf Info: Source file: <figures/real_3.eps>
+(epstopdf)                    date: 2020-10-31 01:45:43
+(epstopdf)                    size: 212233 bytes
+(epstopdf)             Output file: <figures/real_3-eps-converted-to.pdf>
+(epstopdf)                    date: 2020-10-31 01:47:35
+(epstopdf)                    size: 59221 bytes
+(epstopdf)             Command: <repstopdf --outfile=figures/real_3-eps-converted-to.pdf figures/real_3.eps>
+(epstopdf)             \includegraphics on input line 82.
+Package epstopdf Info: Output file is already uptodate.
+<figures/real_3-eps-converted-to.pdf, id=54, 704.54213pt x 211.80128pt>
+File: figures/real_3-eps-converted-to.pdf Graphic file (type pdf)
+<use figures/real_3-eps-converted-to.pdf>
+Package pdftex.def Info: figures/real_3-eps-converted-to.pdf  used on input line 82.
+(pdftex.def)             Requested size: 360.0pt x 108.22404pt.
 
-LaTeX Warning: Float too large for page by 29.41948pt on input line 87.
+
+LaTeX Warning: Float too large for page by 52.80428pt on input line 85.
 
 )pdfTeX warning (ext4): destination with the same identifier (name{page.}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
 l.26 \include{part1}
-                     [2 </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_2-eps-converted-to.pdf>]pdfTeX warning (ext4): destination with the same identifier (name{page.}) has been already used, duplicate ignored
+                     [2]pdfTeX warning (ext4): destination with the same identifier (name{page.}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
 l.26 \include{part1}
-                     [3 </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_3-eps-converted-to.pdf> </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_10-eps-converted-to.pdf>]
+                     [3 </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_2-eps-converted-to.pdf> </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_3-eps-converted-to.pdf>]pdfTeX warning (ext4): destination with the same identifier (name{page.}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.26 \include{part1}
+                     [4 </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/sim_10-eps-converted-to.pdf> </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/real_2-eps-converted-to.pdf> </Users/olamoen/dev/sensorfusion2020/gradedINS/report/figures/real_3-eps-converted-to.pdf>]
 
 LaTeX Warning: Empty bibliography on input line 34.
 
@@ -963,7 +1008,7 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 37.
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 37.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 37.
 Package rerunfilecheck Info: File `labreport.out' has not changed.
-(rerunfilecheck)             Checksum: A930D6930128A27F3C8A28430E4B8389;190.
+(rerunfilecheck)             Checksum: B235F978357E7B7D1217DA3F6D5F6904;97.
 
 
 LaTeX Warning: There were multiply-defined labels.
@@ -973,18 +1018,18 @@ Package logreq Info: Writing requests to 'labreport.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 28735 strings out of 480608
- 541697 string characters out of 5903630
- 1163344 words of memory out of 5000000
- 44116 multiletter control sequences out of 15000+600000
+ 28738 strings out of 480608
+ 542024 string characters out of 5903630
+ 1169220 words of memory out of 5000000
+ 44119 multiletter control sequences out of 15000+600000
  541687 words of font info for 50 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  76i,8n,87p,1040b,1659s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2020/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2020/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2020/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2020/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb>
-Output written on /Users/olamoen/dev/sensorfusion2020/gradedINS/report/labreport.pdf (3 pages, 177161 bytes).
+Output written on /Users/olamoen/dev/sensorfusion2020/gradedINS/report/labreport.pdf (4 pages, 1193224 bytes).
 PDF statistics:
- 266 PDF objects out of 1000 (max. 8388607)
- 89 compressed objects within 1 object stream
- 13 named destinations out of 1000 (max. 500000)
- 174 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 345 PDF objects out of 1000 (max. 8388607)
+ 88 compressed objects within 1 object stream
+ 11 named destinations out of 1000 (max. 500000)
+ 180 words of extra memory for PDF output out of 10000 (max. 10000000)
 
