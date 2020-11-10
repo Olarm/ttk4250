@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import matplotlib.gridspec as gridspec
 from scipy.stats import chi2
 import utils
 
@@ -96,12 +97,12 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([0.05, 0.05, 0.5/180*np.pi])    # TODO
-R = np.diag([0.03, 0.3/180*np.pi])          # TODO
+Q = np.diag([0.005, 0.005, 0.004/180*np.pi])    # TODO
+R = np.diag([0.0033, 0.02/180*np.pi])          # TODO
 
 doAsso = True
 
-JCBBalphas = np.array([5e-5, 5e-8])     # TODO
+JCBBalphas = np.array([5e-10, 5e-10])     # TODO
 # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
@@ -189,6 +190,7 @@ lmk_est_final = lmk_est[N - 1]
 np.set_printoptions(precision=4, linewidth=100)
 
 # %% Plotting of results
+import pylab as plb
 mins = np.amin(landmarks, axis=0)
 maxs = np.amax(landmarks, axis=0)
 
@@ -198,75 +200,103 @@ offsets = ranges * 0.2
 mins -= offsets
 maxs += offsets
 
-fig2, ax2 = plt.subplots(num=2, clear=True)
+fig1 = plt.figure(figsize=(10,4))
+G = gridspec.GridSpec(2, 2)
+
 # landmarks
-ax2.scatter(*landmarks.T, c="r", marker="^")
-ax2.scatter(*lmk_est_final.T, c="b", marker=".")
+
+ax1 = plb.subplot(G[:, 0])
+ax1.scatter(*landmarks.T, c="r", marker="^")
+ax1.scatter(*lmk_est_final.T, c="b", marker=".")
 # Draw covariance ellipsis of measurements
 for l, lmk_l in enumerate(lmk_est_final):
     idxs = slice(3 + 2 * l, 3 + 2 * l + 2)
     rI = P_hat[N - 1][idxs, idxs]
     el = ellipse(lmk_l, rI, 5, 200)
-    ax2.plot(*el.T, "b", linewidth=0.5)
+    ax1.plot(*el.T, "b", linewidth=0.5)
 
-ax2.plot(*poseGT.T[:2], c="r", label="gt", linewidth=0.5)
-ax2.plot(*pose_est.T[:2], c="g", label="est", linewidth=0.5)
-ax2.plot(*ellipse(pose_est[-1, :2], P_hat[N - 1][:2, :2], 5, 200).T, c="g")
-ax2.set(title="results", xlim=(mins[0], maxs[0]), ylim=(mins[1], maxs[1]))
-ax2.axis("equal")
-ax2.grid()
-
-# %% Consistency
-
-# NIS
-insideCI = (CInorm[:N,0] <= NISnorm[:N]) * (NISnorm[:N] <= CInorm[:N,1])
-
-fig3, ax3 = plt.subplots(num=3, clear=True)
-ax3.plot(CInorm[:N,0], '--')
-ax3.plot(CInorm[:N,1], '--')
-ax3.plot(NISnorm[:N], lw=0.5)
-
-ax3.set_title(f'NIS, {insideCI.mean()*100}% inside CI')
-
-# NEES
-
-fig4, ax4 = plt.subplots(nrows=3, ncols=1, figsize=(7, 5), num=4, clear=True, sharex=True)
-tags = ['all', 'pos', 'heading']
-dfs = [3, 2, 1]
-
-for ax, tag, NEES, df in zip(ax4, tags, NEESes.T, dfs):
-    CI_NEES = chi2.interval(1-alpha, df)
-    ax.plot(np.full(N, CI_NEES[0]), '--')
-    ax.plot(np.full(N, CI_NEES[1]), '--')
-    ax.plot(NEES[:N], lw=0.5)
-    insideCI = (CI_NEES[0] <= NEES) * (NEES <= CI_NEES[1])
-    ax.set_title(f'NEES {tag}: {insideCI.mean()*100}% inside CI')
-
-    CI_ANEES = np.array(chi2.interval(1-alpha, df*N)) / N
-    print(f"CI ANEES {tag}: {CI_ANEES}")
-    print(f"ANEES {tag}: {NEES.mean()}")
-
-fig4.tight_layout()
+ax1.plot(*poseGT.T[:2], c="r", label="gt", linewidth=0.5)
+ax1.plot(*pose_est.T[:2], c="g", label="est", linewidth=0.5)
+ax1.plot(*ellipse(pose_est[-1, :2], P_hat[N - 1][:2, :2], 5, 200).T, c="g")
+ax1.set(title="A: results", xlim=(mins[0], maxs[0]), ylim=(mins[1], maxs[1]))
+ax1.axis("equal")
+ax1.grid()
 
 # %% RMSE
+
+tags = ['all', 'pos', 'heading']
+pos_err = np.linalg.norm(pose_est[:N,:2] - poseGT[:N,:2], axis=1)
+heading_err = np.abs(utils.wrapToPi(pose_est[:N,2] - poseGT[:N,2]))
+errs = np.vstack((pos_err, heading_err))
 
 ylabels = ['m', 'deg']
 scalings = np.array([1, 180/np.pi])
 
-fig5, ax5 = plt.subplots(nrows=2, ncols=1, figsize=(7, 5), num=5, clear=True, sharex=True)
+ax2 = plb.subplot(G[0,1])
+ax2.plot(errs[0]*scalings[0])
+ax2.set_title(f"B: {tags[1]}: RMSE {np.sqrt((errs[0]**2).mean())*scalings[0]} {ylabels[0]}")
+ax2.set_ylabel(f"[{ylabels[0]}]")
+ax2.grid()
 
-pos_err = np.linalg.norm(pose_est[:N,:2] - poseGT[:N,:2], axis=1)
-heading_err = np.abs(utils.wrapToPi(pose_est[:N,2] - poseGT[:N,2]))
+ax3 = plb.subplot(G[1, 1])
+ax3.plot(errs[1]*scalings[1])
+ax3.set_title(f"C: {tags[2]}: RMSE {np.sqrt((errs[1]**2).mean())*scalings[1]} {ylabels[1]}")
+ax3.set_ylabel(f"[{ylabels[1]}]")
+ax3.grid()
 
-errs = np.vstack((pos_err, heading_err))
+fig1.tight_layout()
 
-for ax, err, tag, ylabel, scaling in zip(ax5, errs, tags[1:], ylabels, scalings):
-    ax.plot(err*scaling)
-    ax.set_title(f"{tag}: RMSE {np.sqrt((err**2).mean())*scaling} {ylabel}")
-    ax.set_ylabel(f"[{ylabel}]")
-    ax.grid()
+#plb.show()
+plt.savefig("report/figures/sim_results.eps", format="eps")
 
-fig5.tight_layout()
+# %% Consistency
+
+fig2, ax2 = plt.subplots(nrows=2, ncols=2, num=2, figsize=(10,4), clear=True)
+
+# NIS
+
+insideCI = (CInorm[:N,0] <= NISnorm[:N]) * (NISnorm[:N] <= CInorm[:N,1])
+ax2[0,0].plot(CInorm[:N,0], '--')
+ax2[0,0].plot(CInorm[:N,1], '--')
+ax2[0,0].plot(NISnorm[:N], lw=0.5)
+ax2[0,0].set_title(f'A: NIS, {round(insideCI.mean()*100, 4)}% inside CI')
+
+# NEES
+
+dfs = [3, 2, 1]
+
+CI_NEES = chi2.interval(1-alpha, dfs[0])
+ax2[0,1].plot(np.full(N, CI_NEES[0]), '--')
+ax2[0,1].plot(np.full(N, CI_NEES[1]), '--')
+ax2[0,1].plot(NEESes[:N,0], lw=0.5)
+insideCI = (CI_NEES[0] <= NEESes[:N,0]) * (NEESes[:N,0] <= CI_NEES[1])
+ax2[0,1].set_title(f'B: NEES {tags[0]}: {insideCI.mean()*100}% inside CI')
+CI_ANEES = np.array(chi2.interval(1-alpha, dfs[0]*N)) / N
+print(f"CI ANEES {tags[0]}: {CI_ANEES}")
+print(f"ANEES {tags[0]}: {NEESes[:N,0].mean()}")
+
+CI_NEES = chi2.interval(1-alpha, dfs[1])
+ax2[1,0].plot(np.full(N, CI_NEES[0]), '--')
+ax2[1,0].plot(np.full(N, CI_NEES[1]), '--')
+ax2[1,0].plot(NEESes[:N,1], lw=0.5)
+insideCI = (CI_NEES[0] <= NEESes[:N,1]) * (NEESes[:N,1] <= CI_NEES[1])
+ax2[1,0].set_title(f'C: NEES {tags[1]}: {insideCI.mean()*100}% inside CI')
+CI_ANEES = np.array(chi2.interval(1-alpha, dfs[1]*N)) / N
+print(f"CI ANEES {tags[1]}: {CI_ANEES}")
+print(f"ANEES {tags[1]}: {NEESes[:N,1].mean()}")
+
+CI_NEES = chi2.interval(1-alpha, dfs[2])
+ax2[1,1].plot(np.full(N, CI_NEES[0]), '--')
+ax2[1,1].plot(np.full(N, CI_NEES[1]), '--')
+ax2[1,1].plot(NEESes[:N,2], lw=0.5)
+insideCI = (CI_NEES[0] <= NEESes[:N,2]) * (NEESes[:N,2] <= CI_NEES[1])
+ax2[1,1].set_title(f'D: NEES {tags[2]}: {insideCI.mean()*100}% inside CI')
+CI_ANEES = np.array(chi2.interval(1-alpha, dfs[2]*N)) / N
+print(f"CI ANEES {tags[2]}: {CI_ANEES}")
+print(f"ANEES {tags[2]}: {NEESes[:N,2].mean()}")
+
+fig2.tight_layout()
+plt.savefig("report/figures/sim_NIS_NEES.eps", format="eps")
 
 # %% Movie time
 
