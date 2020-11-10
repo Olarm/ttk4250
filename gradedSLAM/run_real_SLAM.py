@@ -112,7 +112,7 @@ Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
 R = np.diag([0.0033, 0.02/180*np.pi])
 
-JCBBalphas = np.array([5e-10, 5e-10])
+JCBBalphas = np.array([5e-13, 5e-8])
 
 sensorOffset = np.array([car.a + car.L, car.b])
 doAsso = True
@@ -139,7 +139,7 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 10000#K
+N = 1000 #K
 
 doPlot = False
 
