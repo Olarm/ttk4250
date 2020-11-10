@@ -147,8 +147,8 @@ class EKFSLAM:
         # cov matrix layout:
         # [[P_xx, P_xm],
         # [P_mx, P_mm]]
-        P[:3, :3] = Fx @ P[:3, :3] @ Fx.T + self.Q # TODO robot cov prediction
-        P[:3, 3:] = Fu @ P[:3, 3:]  # TODO robot-map covariance prediction
+        P[:3, :3] = Fx @ P[:3, :3] @ Fx.T + Fu @ self.Q @ Fu.T # TODO robot cov prediction
+        P[:3, 3:] = Fx @ P[:3, 3:]  # TODO robot-map covariance prediction
         P[3:, :3] = P[:3, 3:].T     # TODO map-robot covariance: transpose of the above
 
         # Note: Should perhaps use f() here
@@ -237,10 +237,10 @@ class EKFSLAM:
 
 
         # NOTE: Calculate this here for some speed increase probably
-        #zpred = self.h(eta)                                          # TODO (2, #measurements), predicted measurements, like
-        #zpred = np.reshape(zpred, (2, zpred.shape[0] //2), "F") # [ranges;
+        zpred = self.h(eta)                                          # TODO (2, #measurements), predicted measurements, like
+        zpred = np.reshape(zpred, (2, zpred.shape[0] //2), "F") # [ranges;
                                                                 #  bearings]
-        #zr = zpred[0, :]    # TODO, ranges
+        zr = zpred[0, :]    # TODO, ranges
 
         # Allocate H and set submatrices as memory views into H
         # You may or may not want to do this like this
@@ -248,8 +248,8 @@ class EKFSLAM:
 
         z = np.zeros((numM,1))
         ones = np.ones((numM,1))
-        Hx_tops = -np.concatenate(((1/la.norm(zc, axis=1) * delta_m).T, z), axis=1) # Correct
-        Hx_bottoms = np.concatenate(((1/la.norm(zc, axis=1)**2 * delta_m).T @ Rpihalf, -ones), axis=1) # Correct
+        Hx_tops = -np.concatenate(((1/la.norm(zc, axis=0) * delta_m).T, z), axis=1) # Correct
+        Hx_bottoms = np.concatenate(((1/la.norm(zc, axis=0)**2 * delta_m).T @ Rpihalf, -ones), axis=1) # Correct
         Hx = np.concatenate((Hx_tops, Hx_bottoms), axis=1)
         Hx = Hx.reshape(-1,3)
 
@@ -294,23 +294,31 @@ class EKFSLAM:
         Gx = np.empty((numLmk * 2, 3))
         Rall = np.zeros((numLmk * 2, numLmk * 2))
 
-        I2 = np.eye(2) # Preallocate, used for Gx
+        #I2 = np.eye(2) # Preallocate, used for Gx
         sensor_offset_world = rotmat2d(eta[2]) @ self.sensor_offset # For transforming landmark position into world frame
-        sensor_offset_world_der = rotmat2d(eta[2] + np.pi / 2) @ self.sensor_offset # Used in Gx
+        #sensor_offset_world_der = rotmat2d(eta[2] + np.pi / 2) @ self.sensor_offset # Used in Gx
+
+        rot = rotmat2d(z[1::2] + eta[2])
+        #new_rot = rot.swapaxes(0,2).swapaxes(1,2).ravel().reshape((18,2))
+        vecZ = np.array([-np.sin(z[1::2] + eta[2]), np.cos(z[1::2] + eta[2])]).T
+        Gx[:,:2] = np.tile(np.eye(2), (numLmk, 1))
+        Gx[:,2] = (z[0::2].reshape(-1,1) * vecZ + sensor_offset_world).ravel()
+
+        lmnew = ((z[0::2] * rot[:,0]).T + eta[0:2] + sensor_offset_world).ravel()
+
+        right = np.insert(z[0::2], np.arange(0,numLmk,1), 0)
+        left = np.tile([1,0],numLmk)
+        np.concatenate((left, right)).reshape(-1,2, order="F")
 
         for j in range(numLmk):
             ind = 2 * j
             inds = slice(ind, ind + 2)
             zj = z[inds]
 
-            vecZ = np.array([-np.sin(zj[1]) + eta[2], np.cos(zj[1]) + eta[2]])
-            rot = rotmat2d(zj[1] + eta[2]) # TODO, rotmat in Gz
-            lmnew[inds] = zj[0] * rot[:,0] + eta[0:2] + sensor_offset_world # TODO, calculate position of new landmark in world frame
+            #rot_temp = rotmat2d(zj[1] + eta[2]) # TODO, rotmat in Gz
+            #lmnew[inds] = zj[0] * rot[:,0] + eta[0:2] + sensor_offset_world # TODO, calculate position of new landmark in world frame
 
-            Gx[inds, :2] = I2 # TODO
-            Gx[inds, 2] = zj[0] * vecZ + sensor_offset_world_der # TODO
-
-            Gz = rot @ np.diag([1, zj[0]]) # TODO
+            Gz = rot[:,:,j] @ np.diag([1, zj[0]]) # TODO
 
             Rall[inds, inds] = Gz @ self.R @ Gz.T # TODO, Gz * R * Gz^T, transform measurement covariance from polar to cartesian coordinates
 
@@ -436,20 +444,23 @@ class EKFSLAM:
                 v[1::2] = utils.wrapToPi(v[1::2])
 
                 # Kalman mean update
-                # S_cho_factors = la.cho_factor(Sa) # Optional, used in places for S^-1, see scipy.linalg.cho_factor and scipy.linalg.cho_solve
+                #S_cho_factors = la.cho_factor(Sa) # Optional, used in places for S^-1, see scipy.linalg.cho_factor and scipy.linalg.cho_solve
                 W = P @ Ha.T @ la.inv(Sa) # TODO, Kalman gain, can use S_cho_factors
+                #W = la.cho_solve(S_cho_factors, Ha @ P).T
                 etaupd = eta + W @ v # TODO, Kalman update
 
                 # Kalman cov update: use Joseph form for stability
                 jo = -W @ Ha
                 jo[np.diag_indices(jo.shape[0])] += 1  # same as adding Identity mat
-                Pupd = jo @ P# TODO, Kalman update. This is the main workload on VP after speedups
+                Pupd = jo @ P# @ jo.T + W @ np.kron(np.eye(za.size//2), self.R)@W.T
+                # TODO, Kalman update. This is the main workload on VP after speedups
 
                 CI_alpha = 0.05
                 CI_list = np.array([[CI_alpha/2],[1-CI_alpha/2],[0.5]])
                 CI = stats.chi2.ppf(CI_list, v.size)
                 # calculate NIS, can use S_cho_factors
-                NIS = (v.T @ la.inv(Sa) @ v - CI[0]) / (CI[1] - CI[0]) # TODO
+                NIS = (v.T @ la.inv(Sa) @ v)# - CI[0]) / (CI[1] - CI[0]) # TODO
+                #NIS = v.T @ la.cho_solve(S_cho_factors, v)
 
                 # When tested, remove for speed
                 assert np.allclose(Pupd, Pupd.T), "EKFSLAM.update: Pupd not symmetric"
@@ -511,11 +522,14 @@ class EKFSLAM:
         assert np.ndim(P_heading) == 0, "EKFSLAM.NEES: P_heading must be scalar"
 
         # NB: Needs to handle both vectors and scalars! Additionally, must handle division by zero
-        NEES_all = d_x @ (np.linalg.solve(P, d_x))
-        NEES_pos = d_p @ (np.linalg.solve(P_p, d_p))
+
         try:
+            NEES_all = d_x @ (np.linalg.solve(P, d_x))
+            NEES_pos = d_p @ (np.linalg.solve(P_p, d_p))
             NEES_heading = d_heading ** 2 / P_heading
-        except ZeroDivisionError:
+        except (ZeroDivisionError, np.linalg.LinAlgError):
+            NEES_all = 1.0
+            NEES_pos = 1.0
             NEES_heading = 1.0 # TODO: beware
 
         NEESes = np.array([NEES_all, NEES_pos, NEES_heading])
