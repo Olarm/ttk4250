@@ -3,7 +3,7 @@ import numpy as np
 from scipy.linalg import block_diag
 import scipy.linalg as la
 from scipy import stats
-from utils import rotmat2d
+from utils import rotmat2d, block_diag_einsum
 from JCBB import JCBB
 import utils
 
@@ -423,7 +423,9 @@ class EKFSLAM:
 
             # Here you can use simply np.kron (a bit slow) to form the big (very big in VP after a while) R,
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
-            S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
+            #S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
+            S = H @ P @ H.T + block_diag_einsum(self.R, numLmk)
+            
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"

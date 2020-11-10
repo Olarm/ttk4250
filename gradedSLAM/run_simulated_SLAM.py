@@ -96,8 +96,8 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([0.005, 0.005, 0.05/180*np.pi])    # TODO
-R = np.diag([0.003, 0.03/180*np.pi])          # TODO
+Q = np.diag([0.05, 0.05, 0.5/180*np.pi])    # TODO
+R = np.diag([0.03, 0.3/180*np.pi])          # TODO
 
 doAsso = True
 
