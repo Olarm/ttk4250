@@ -51,7 +51,6 @@ class EKFSLAM:
                           x[1] + u[0] * np.sin(psi) + u[1] * np.cos(psi),
                           utils.wrapToPi(psi + u[2])])
 
-        # Note: Probably wrapped the wrong angle
 
         assert xpred.shape == (3,), "EKFSLAM.f: wrong shape for xpred"
         return xpred
@@ -77,7 +76,6 @@ class EKFSLAM:
                        [0, 1, u[0] * np.cos(psi) - u[1] * np.sin(psi)],
                        [0, 0, 1]])
 
-        # Note: Probably wrapped wrong angle here as well
 
         assert Fx.shape == (3, 3), "EKFSLAM.Fx: wrong shape"
         return Fx
@@ -151,7 +149,6 @@ class EKFSLAM:
         P[:3, 3:] = Fx @ P[:3, 3:]  # TODO robot-map covariance prediction
         P[3:, :3] = P[:3, 3:].T     # TODO map-robot covariance: transpose of the above
 
-        # Note: Should perhaps use f() here
 
         assert np.allclose(P, P.T), "EKFSLAM.predict: not symmetric P"
         assert np.all(
@@ -236,11 +233,11 @@ class EKFSLAM:
         #  y coordinates]
 
 
-        # NOTE: Calculate this here for some speed increase probably
+        # NOTE: Calculate zpred here for some speed increase probably
         zpred = self.h(eta)                                          # TODO (2, #measurements), predicted measurements, like
         zpred = np.reshape(zpred, (2, zpred.shape[0] //2), "F") # [ranges;
                                                                 #  bearings]
-        zr = zpred[0, :]    # TODO, ranges
+        #zr = zpred[0, :]    # TODO, ranges
 
         # Allocate H and set submatrices as memory views into H
         # You may or may not want to do this like this
@@ -259,7 +256,6 @@ class EKFSLAM:
         H[:,:3] = Hx
         H[:,3:] = la.block_diag(*Hm)
 
-        # Note: If something wrong, probably the squared norms
         
         # TODO: You can set some assertions here to make sure that some of the structure in H is correct
         
@@ -294,15 +290,15 @@ class EKFSLAM:
         Gx = np.empty((numLmk * 2, 3))
         Rall = np.zeros((numLmk * 2, numLmk * 2))
 
-        #I2 = np.eye(2) # Preallocate, used for Gx
         sensor_offset_world = rotmat2d(eta[2]) @ self.sensor_offset # For transforming landmark position into world frame
-        #sensor_offset_world_der = rotmat2d(eta[2] + np.pi / 2) @ self.sensor_offset # Used in Gx
+        sensor_offset_world_der = rotmat2d(eta[2] + np.pi / 2) @ self.sensor_offset # Used in Gx
 
         rot = rotmat2d(z[1::2] + eta[2])
         #new_rot = rot.swapaxes(0,2).swapaxes(1,2).ravel().reshape((18,2))
+        
         vecZ = np.array([-np.sin(z[1::2] + eta[2]), np.cos(z[1::2] + eta[2])]).T
         Gx[:,:2] = np.tile(np.eye(2), (numLmk, 1))
-        Gx[:,2] = (z[0::2].reshape(-1,1) * vecZ + sensor_offset_world).ravel()
+        Gx[:,2] = (z[0::2].reshape(-1,1) * vecZ + sensor_offset_world_der).ravel()
 
         lmnew = ((z[0::2] * rot[:,0]).T + eta[0:2] + sensor_offset_world).ravel()
 
@@ -314,9 +310,6 @@ class EKFSLAM:
             ind = 2 * j
             inds = slice(ind, ind + 2)
             zj = z[inds]
-
-            #rot_temp = rotmat2d(zj[1] + eta[2]) # TODO, rotmat in Gz
-            #lmnew[inds] = zj[0] * rot[:,0] + eta[0:2] + sensor_offset_world # TODO, calculate position of new landmark in world frame
 
             Gz = rot[:,:,j] @ np.diag([1, zj[0]]) # TODO
 
@@ -423,7 +416,6 @@ class EKFSLAM:
 
             # Here you can use simply np.kron (a bit slow) to form the big (very big in VP after a while) R,
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
-            #S = H@P@H.T + np.kron(np.eye(numLmk), self.R) # TODO,
             S = H @ P @ H.T + block_diag_einsum(self.R, numLmk)
             
             assert (
@@ -457,9 +449,6 @@ class EKFSLAM:
                 Pupd = jo @ P# @ jo.T + W @ np.kron(np.eye(za.size//2), self.R)@W.T
                 # TODO, Kalman update. This is the main workload on VP after speedups
 
-                CI_alpha = 0.05
-                CI_list = np.array([[CI_alpha/2],[1-CI_alpha/2],[0.5]])
-                CI = stats.chi2.ppf(CI_list, v.size)
                 # calculate NIS, can use S_cho_factors
                 NIS = (v.T @ la.inv(Sa) @ v)# - CI[0]) / (CI[1] - CI[0]) # TODO
                 #NIS = v.T @ la.cho_solve(S_cho_factors, v)
