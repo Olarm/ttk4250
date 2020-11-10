@@ -96,12 +96,12 @@ K = len(z)
 M = len(landmarks)
 
 # %% Initilize
-Q = np.diag([0.05, 0.05, 0.5/180*np.pi])    # TODO
-R = np.diag([0.05, 0.5/180*np.pi])          # TODO
+Q = np.diag([0.005, 0.005, 0.05/180*np.pi])    # TODO
+R = np.diag([0.003, 0.03/180*np.pi])          # TODO
 
 doAsso = True
 
-JCBBalphas = np.array([0.5e-3, 0.5e-5])     # TODO
+JCBBalphas = np.array([5e-5, 5e-8])     # TODO
 # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
@@ -131,7 +131,7 @@ P_pred[0] = np.zeros((3, 3))  # we also say that we are 100% sure about that
 # plotting
 
 doAssoPlot = False
-playMovie = True
+playMovie = False
 if doAssoPlot:
     figAsso, axAsso = plt.subplots(num=1, clear=True)
 
@@ -145,7 +145,7 @@ for k, z_k in tqdm(enumerate(z[:N])):
     eta_hat[k], P_hat[k], NIS[k], a[k] = slam.update(eta_pred[k], P_pred[k], z[k]) # TODO update
 
     if k < K - 1:
-        eta_pred[k + 1], P_pred[k + 1] = slam.predict(eta_hat[k], P_hat[k], odometry[k])# TODO predict
+        eta_pred[k + 1], P_pred[k + 1] = slam.predict(eta_hat[k], P_hat[k].copy(), odometry[k])# TODO predict
 
     assert (
         eta_hat[k].shape[0] == P_hat[k].shape[0]
@@ -153,7 +153,7 @@ for k, z_k in tqdm(enumerate(z[:N])):
 
     num_asso = np.count_nonzero(a[k] > -1)
 
-    CI[k] = chi2.interval(alpha, 2 * num_asso)
+    CI[k] = chi2.interval(1-alpha, 2 * num_asso)
 
     if num_asso > 0:
         NISnorm[k] = NIS[k] / (2 * num_asso)
@@ -207,10 +207,10 @@ for l, lmk_l in enumerate(lmk_est_final):
     idxs = slice(3 + 2 * l, 3 + 2 * l + 2)
     rI = P_hat[N - 1][idxs, idxs]
     el = ellipse(lmk_l, rI, 5, 200)
-    ax2.plot(*el.T, "b")
+    ax2.plot(*el.T, "b", linewidth=0.5)
 
-ax2.plot(*poseGT.T[:2], c="r", label="gt")
-ax2.plot(*pose_est.T[:2], c="g", label="est")
+ax2.plot(*poseGT.T[:2], c="r", label="gt", linewidth=0.5)
+ax2.plot(*pose_est.T[:2], c="g", label="est", linewidth=0.5)
 ax2.plot(*ellipse(pose_est[-1, :2], P_hat[N - 1][:2, :2], 5, 200).T, c="g")
 ax2.set(title="results", xlim=(mins[0], maxs[0]), ylim=(mins[1], maxs[1]))
 ax2.axis("equal")
@@ -235,14 +235,14 @@ tags = ['all', 'pos', 'heading']
 dfs = [3, 2, 1]
 
 for ax, tag, NEES, df in zip(ax4, tags, NEESes.T, dfs):
-    CI_NEES = chi2.interval(alpha, df)
+    CI_NEES = chi2.interval(1-alpha, df)
     ax.plot(np.full(N, CI_NEES[0]), '--')
     ax.plot(np.full(N, CI_NEES[1]), '--')
     ax.plot(NEES[:N], lw=0.5)
     insideCI = (CI_NEES[0] <= NEES) * (NEES <= CI_NEES[1])
     ax.set_title(f'NEES {tag}: {insideCI.mean()*100}% inside CI')
 
-    CI_ANEES = np.array(chi2.interval(alpha, df*N)) / N
+    CI_ANEES = np.array(chi2.interval(1-alpha, df*N)) / N
     print(f"CI ANEES {tag}: {CI_ANEES}")
     print(f"ANEES {tag}: {NEES.mean()}")
 
