@@ -101,7 +101,7 @@ R = np.diag([0.003, 0.03/180*np.pi])          # TODO
 
 doAsso = True
 
-JCBBalphas = np.array([5e-5, 5e-10])     # TODO
+JCBBalphas = np.array([5e-5, 5e-8])     # TODO
 # first is for joint compatibility, second is individual
 # these can have a large effect on runtime either through the number of landmarks created
 # or by the size of the association search space.
@@ -142,7 +142,7 @@ print("starting sim (" + str(N) + " iterations)")
 
 for k, z_k in tqdm(enumerate(z[:N])):
 
-    eta_hat[k], P_hat[k], NIS[k], a[k] = slam.update(eta_pred[k], P_pred[k].copy(), z[k]) # TODO update
+    eta_hat[k], P_hat[k], NIS[k], a[k] = slam.update(eta_pred[k], P_pred[k], z[k]) # TODO update
 
     if k < K - 1:
         eta_pred[k + 1], P_pred[k + 1] = slam.predict(eta_hat[k], P_hat[k].copy(), odometry[k])# TODO predict
