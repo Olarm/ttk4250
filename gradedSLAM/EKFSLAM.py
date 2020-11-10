@@ -317,10 +317,15 @@ class EKFSLAM:
 
         assert len(lmnew) % 2 == 0, "SLAM.add_landmark: lmnew not even length"
         etaadded = np.hstack((eta, lmnew))# TODO, append new landmarks to state vector
-        Padded = la.block_diag(P, Gx@P[:3,:3]@Gx.T + Rall) # TODO, block diagonal of P_new, see problem text in 1g) in graded assignment 3
-        Padded[n:, :n] = Gx @ P[:3,:]   # TODO, top right corner of P_new
-        Padded[:n, n:] = P[:,:3] @ Gx.T # TODO, transpose of above. Should yield the same as calcualion, but this enforces symmetry and should be cheaper
-
+        
+        n_R = Rall.shape[0]
+        Padded = np.zeros((n+n_R,n+n_R))
+        
+        Padded[:n,:n] = P
+        Padded[n:,n:] = Gx@P[:3,:3]@Gx.T + Rall
+        Padded[n:,:n] = Gx @ P[:3,:]
+        Padded[:n,n:] = Padded[n:,:n].T
+        
         assert (
             etaadded.shape * 2 == Padded.shape
         ), "EKFSLAM.add_landmarks: calculated eta and P has wrong shape"
