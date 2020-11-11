@@ -106,13 +106,13 @@ b = 0.5  # laser distance to the left of center
 
 car = Car(L, H, a, b)
 
-sigmas = [0.005, 0.005, 0.004/180*np.pi]
+sigmas = [0.05, 0.05, 1/180*np.pi]
 CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
 Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
-R = np.diag([0.0033, 0.02/180*np.pi])
+R = np.diag([0.002, 0.02/180*np.pi])
 
-JCBBalphas = np.array([5e-13, 5e-8])
+JCBBalphas = np.array([5e-3, 5e-12])
 
 sensorOffset = np.array([car.a + car.L, car.b])
 doAsso = True
@@ -139,11 +139,17 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 1000 #K
+N = 100 #K
+GPSi1, GPSk2, GPSi2 = 0,0,0
 
 doPlot = False
 
 lh_pose = None
+
+do_GPS_NIS = True
+if do_GPS_NIS:
+    GPS_NIS = np.zeros((timeGps.shape))
+    GPS_NEES = np.zeros((timeGps.shape))
 
 if doPlot:
     fig, ax = plt.subplots(num=1, clear=True)
@@ -178,7 +184,13 @@ for k in tqdm(range(N)):
         eta, P = slam.predict(eta, P, odo) # TODO predict
 
         z = detectTrees(LASER[mk])
-        eta, P, NIS[mk], a[mk] = slam.update(eta, P, z)# TODO update
+        
+        GPS_idx = (np.abs(timeGps - timeLsr[k])).argmin()
+        if np.allclose(timeGps[GPS_idx], timeLsr[k], atol=0.1):
+            eta, P, NIS[mk], a[mk] = slam.update(eta, P, z, gps=[Lo_m[GPS_idx], La_m[GPS_idx]])# TODO update
+            GPSi1 += 1
+        else:
+            eta, P, NIS[mk], a[mk] = slam.update(eta, P, z)# TODO update
 
         num_asso = np.count_nonzero(a[mk] > -1)
 
@@ -222,6 +234,18 @@ for k in tqdm(range(N)):
         t = timeOdo[k + 1]
         odo = odometry(speed[k + 1], steering[k + 1], dt, car)
         eta, P = slam.predict(eta, P, odo)
+        
+    if np.allclose(timeGps[GPSk2], timeOdo[k], atol=1e-1):
+        error = eta[:2] - [Lo_m[GPSk2], La_m[GPSk2]]
+        GPS_NEES[GPSi2] = error @ P[:2,:2] @ error
+        GPSi2 += 1
+        GPSk2 += 1
+    elif (timeGps[GPSk2] + 0.1) < timeOdo[k]:
+        #print("incrementing GPSk")
+        GPSk2 += 1
+
+
+        
 
 # %% Consistency
 

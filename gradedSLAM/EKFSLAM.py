@@ -393,7 +393,7 @@ class EKFSLAM:
             pass
 
     def update(
-        self, eta: np.ndarray, P: np.ndarray, z: np.ndarray
+        self, eta: np.ndarray, P: np.ndarray, z: np.ndarray, gps = None
     ) -> Tuple[np.ndarray, np.ndarray, float, np.ndarray]:
         """Update eta and P with z, associating landmarks and adding new ones.
 
@@ -422,6 +422,8 @@ class EKFSLAM:
             # Here you can use simply np.kron (a bit slow) to form the big (very big in VP after a while) R,
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
             S = H @ P @ H.T + block_diag_einsum(self.R, numLmk)
+            
+
             
             assert (
                 S.shape == zpred.shape * 2
@@ -457,6 +459,9 @@ class EKFSLAM:
                 # calculate NIS, can use S_cho_factors
                 NIS = (v.T @ la.inv(Sa) @ v)# - CI[0]) / (CI[1] - CI[0]) # TODO
                 #NIS = v.T @ la.cho_solve(S_cho_factors, v)
+
+                if gps != None:
+                    print("JIPPI")
 
                 # When tested, remove for speed
                 assert np.allclose(Pupd, Pupd.T), "EKFSLAM.update: Pupd not symmetric"
