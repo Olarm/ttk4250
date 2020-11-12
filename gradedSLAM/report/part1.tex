@@ -9,6 +9,7 @@
     \item Trust odometry to much causes predicted position to change making it harder to make associations
     \item Too large R, we overfit and NIS becomes small
     \item Avoid detecting same object as different
+    \item Make sure Q is tuned so that P contains reasonable values
 \end{itemize}
 
 
@@ -31,11 +32,14 @@
 
 \subsection{Fit to GNSS}
 
+\begin{itemize}
+    \item For NEES with GNSS, remove outliers
+\end{itemize}
+
 One way of showing a fit between the GNSS data and the estimated 
 positions is to attempt a translation of the GNSS data onto the estimates
 and analyse the error. We found the rotation using SVD and the translation
 was found by solving a linear least squares problem.
 
-\begin{align*}
-    
-\end{align*}
+To compare with GNSS we computed NIS values by finding each odometry
+measurement closest in time to the GNSS measurements.
