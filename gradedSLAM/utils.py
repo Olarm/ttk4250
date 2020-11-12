@@ -13,3 +13,8 @@ def block_diag_einsum(arr, num):
     diag = np.einsum('ijik->ijk', result)
     diag[:] = arr
     return result.reshape(rows * num, cols * num)
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx

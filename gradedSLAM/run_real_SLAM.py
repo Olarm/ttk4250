@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from plotting import ellipse
 from vp_utils import detectTrees, odometry, Car
-from utils import rotmat2d
+from utils import rotmat2d, find_nearest
+from sklearn.decomposition import PCA
 
 # %% plot config check and style setup
 
@@ -112,12 +113,14 @@ Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
 R = np.diag([0.002, 0.02/180*np.pi])
 
+R_gps = np.diag([0.5, 0.5])
+
 JCBBalphas = np.array([5e-3, 5e-12])
 
 sensorOffset = np.array([car.a + car.L, car.b])
 doAsso = True
 
-slam = EKFSLAM(Q, R, do_asso=doAsso, alphas=JCBBalphas, sensor_offset=sensorOffset)
+slam = EKFSLAM(Q, R, R_gps=R_gps, do_asso=doAsso, alphas=JCBBalphas, sensor_offset=sensorOffset)
 
 # For consistency testing
 alpha = 0.05
@@ -139,7 +142,7 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 100 #K
+N = 10000 #K
 GPSi1, GPSk2, GPSi2 = 0,0,0
 
 doPlot = False
@@ -184,13 +187,7 @@ for k in tqdm(range(N)):
         eta, P = slam.predict(eta, P, odo) # TODO predict
 
         z = detectTrees(LASER[mk])
-        
-        GPS_idx = (np.abs(timeGps - timeLsr[k])).argmin()
-        if np.allclose(timeGps[GPS_idx], timeLsr[k], atol=0.1):
-            eta, P, NIS[mk], a[mk] = slam.update(eta, P, z, gps=[Lo_m[GPS_idx], La_m[GPS_idx]])# TODO update
-            GPSi1 += 1
-        else:
-            eta, P, NIS[mk], a[mk] = slam.update(eta, P, z)# TODO update
+        eta, P, NIS[mk], a[mk] = slam.update(eta, P, z)# TODO update
 
         num_asso = np.count_nonzero(a[mk] > -1)
 
@@ -233,17 +230,23 @@ for k in tqdm(range(N)):
         dt = timeOdo[k + 1] - t
         t = timeOdo[k + 1]
         odo = odometry(speed[k + 1], steering[k + 1], dt, car)
+        
+        if np.allclose(timeGps[GPSk2], timeOdo[k], atol=1e-1):
+            error = eta[:2] - [Lo_m[GPSk2], La_m[GPSk2]]
+            GPS_NEES[GPSi2] = error @ P[:2,:2] @ error
+            GPSi2 += 1
+            GPSk2 += 1
+        elif (timeGps[GPSk2] + 0.1) < timeOdo[k]:
+            GPSk2 += 1
+            
         eta, P = slam.predict(eta, P, odo)
         
-    if np.allclose(timeGps[GPSk2], timeOdo[k], atol=1e-1):
-        error = eta[:2] - [Lo_m[GPSk2], La_m[GPSk2]]
-        GPS_NEES[GPSi2] = error @ P[:2,:2] @ error
-        GPSi2 += 1
-        GPSk2 += 1
-    elif (timeGps[GPSk2] + 0.1) < timeOdo[k]:
-        #print("incrementing GPSk")
-        GPSk2 += 1
-
+        GPS_idx = (np.abs(timeGps - timeOdo[k])).argmin()
+        if np.allclose(timeGps[GPS_idx], timeOdo[k], atol=1e-2):
+            #print(timeGps[GPS_idx], timeOdo[k])
+            z_GPS = [Lo_m[GPSk2], La_m[GPSk2]]
+            GPS_NIS[GPSi1] = slam.GNSS_NIS(eta[:2], P[:2,:2], z_GPS)
+            GPSi1 += 1
 
         
 
@@ -252,33 +255,89 @@ for k in tqdm(range(N)):
 # NIS
 insideCI = (CInorm[:mk, 0] <= NISnorm[:mk]) * (NISnorm[:mk] <= CInorm[:mk, 1])
 
-fig3, ax3 = plt.subplots(num=3, clear=True)
-ax3.plot(CInorm[:mk, 0], "--")
-ax3.plot(CInorm[:mk, 1], "--")
-ax3.plot(NISnorm[:mk], lw=0.5)
+fig3, ax3 = plt.subplots(nrows=2, num=3, clear=True)
+ax3[0].plot(CInorm[:mk, 0], "--")
+ax3[0].plot(CInorm[:mk, 1], "--")
+ax3[0].plot(NISnorm[:mk], lw=0.5)
+ax3[0].set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI")
 
-ax3.set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI")
+CI_NEES = chi2.interval(1-alpha, 2)
+
+insideCI = (CI_NEES[0] <= GPS_NEES) * (GPS_NEES <= CI_NEES[1])
+ax3[1].plot(np.full(GPSi1, CI_NEES[0]), '--')
+ax3[1].plot(np.full(GPSi1, CI_NEES[1]), '--')
+ax3[1].plot(GPS_NIS[:GPSi1], lw=0.5)
+
+
+transform = True
+if transform:
+    l = timeGps[timeGps < timeLsr[mk-1]].shape[0]
+    idxs = np.zeros((l,))
+    for i, value in enumerate(timeGps[timeGps < timeLsr[mk-1]]):
+        idxs[i] = find_nearest(timeLsr[:mk-1], value)
+    idxs = idxs.astype("int")
+    t_errors = timeGps[:l] - timeLsr[idxs]
+    error_squared = np.sqrt(t_errors @ t_errors)
+    
+    gps = np.array([Lo_m[:l], La_m[:l]])
+    xests = xupd[idxs,:2].T
+    gps_means = np.mean(gps, axis=1)
+    xests_means= np.mean(xests, axis=1)
+    gps_c = gps.T - gps_means
+    xests_c = xests.T - xests_means
+    D = (gps_c).T @ (xests_c)
+    U,S,V = np.linalg.svd(D, full_matrices=True)
+    Rot = V@U.T
+    #theta = -0.22*np.pi/12
+    #Rot = rotmat2d(theta)
+    trans =  xests_means - Rot @ gps_means
+    #trans = np.array([2, 10])
+    #[La_mn, Lo_mn] = (np.array([La_m, Lo_m]).T @ Rot.T + trans).T
+    [Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
+    
+
 
 # %% slam
 
-if do_raw_prediction:
-    fig5, ax5 = plt.subplots(num=5, clear=True)
-    ax5.scatter(
-        Lo_m[timeGps < timeOdo[N - 1]],
-        La_m[timeGps < timeOdo[N - 1]],
-        c="r",
-        marker=".",
-        label="GPS",
-    )
-    ax5.plot(*odox[:N, :2].T, label="odom")
-    ax5.grid()
-    ax5.set_title("GPS vs odometry integration")
-    ax5.legend()
+#if do_raw_prediction:
+#    fig5, ax5 = plt.subplots(num=5, clear=True)
+#    ax5.scatter(
+#        Lo_m[timeGps < timeOdo[N - 1]],
+#        La_m[timeGps < timeOdo[N - 1]],
+#        c="r",
+#        marker=".",
+#        label="GPS",
+#    )
+#    ax5.scatter(
+#        Lo_mn[timeGps < timeOdo[N - 1]],
+#        La_mn[timeGps < timeOdo[N - 1]],
+#        c="r",
+#        marker=".",
+#        label="GPS",
+#    )
+#    ax5.plot(*odox[:N, :2].T, label="odom")
+#    ax5.grid()
+#    ax5.set_title("GPS vs odometry integration")
+#    ax5.legend()
 
 # %%
 fig6, ax6 = plt.subplots(num=6, clear=True)
 ax6.scatter(*eta[3:].reshape(-1, 2).T, color="r", marker="x")
 ax6.plot(*xupd[mk_first:mk, :2].T)
+ax6.scatter(
+    Lo_m[timeGps < timeOdo[N - 1]],
+    La_m[timeGps < timeOdo[N - 1]],
+    c="r",
+    marker=".",
+    label="GPS",
+)
+ax6.scatter(
+    Lo_mn,
+    La_mn,
+    c="g",
+    marker=".",
+    label="GPS",
+)
 ax6.set(
     title=f"Steps {k}, laser scans {mk-1}, landmarks {len(eta[3:])//2},\nmeasurements {z.shape[0]}, num new = {np.sum(a[mk] == -1)}"
 )

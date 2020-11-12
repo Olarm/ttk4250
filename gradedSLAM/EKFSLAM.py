@@ -22,6 +22,7 @@ class EKFSLAM:
         do_asso=False,
         alphas=np.array([0.001, 0.0001]),
         sensor_offset=np.zeros(2),
+        R_gps = None
     ):
 
         self.Q = Q
@@ -29,6 +30,7 @@ class EKFSLAM:
         self.do_asso = do_asso
         self.alphas = alphas
         self.sensor_offset = sensor_offset
+        self.R_gps = R_gps
 
     def f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         """Add the odometry u to the robot state x.
@@ -423,8 +425,6 @@ class EKFSLAM:
             # or be smart with indexing and broadcasting (3d indexing into 2d mat) realizing you are adding the same R on all diagonals
             S = H @ P @ H.T + block_diag_einsum(self.R, numLmk)
             
-
-            
             assert (
                 S.shape == zpred.shape * 2
             ), "EKFSLAM.update: wrong shape on either S or zpred"
@@ -460,8 +460,6 @@ class EKFSLAM:
                 NIS = (v.T @ la.inv(Sa) @ v)# - CI[0]) / (CI[1] - CI[0]) # TODO
                 #NIS = v.T @ la.cho_solve(S_cho_factors, v)
 
-                if gps != None:
-                    print("JIPPI")
 
                 # When tested, remove for speed
                 assert np.allclose(Pupd, Pupd.T), "EKFSLAM.update: Pupd not symmetric"
@@ -538,3 +536,11 @@ class EKFSLAM:
 
         assert np.all(NEESes >= 0), "ESKF.NEES: one or more negative NEESes"
         return NEESes
+    
+    def GNSS_NIS(self, x: np.ndarray, P: np.ndarray, z_gnss):
+        H = np.eye(2)
+        S = H @ P @ H.T + self.R_gps
+        v = z_gnss - x
+        NIS_GPS = v.T @ la.inv(S) @ v
+        return NIS_GPS
+        
