@@ -288,11 +288,7 @@ if transform:
     D = (gps_c).T @ (xests_c)
     U,S,V = np.linalg.svd(D, full_matrices=True)
     Rot = V@U.T
-    #theta = -0.22*np.pi/12
-    #Rot = rotmat2d(theta)
     trans =  xests_means - Rot @ gps_means
-    #trans = np.array([2, 10])
-    #[La_mn, Lo_mn] = (np.array([La_m, Lo_m]).T @ Rot.T + trans).T
     [Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
     
 
