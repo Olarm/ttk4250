@@ -107,7 +107,7 @@ b = 0.5  # laser distance to the left of center
 
 car = Car(L, H, a, b)
 
-sigmas = [0.5, 0.5, 1/180*np.pi]
+sigmas = [0.01, 0.01, 1/180*np.pi]
 CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
 Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
@@ -252,6 +252,35 @@ for k in tqdm(range(N)):
 
 # %% Consistency
 
+l = timeGps[timeGps < timeLsr[mk-1]].shape[0]
+idxs = np.zeros((l,))
+for i, value in enumerate(timeGps[timeGps < timeLsr[mk-1]]):
+    idxs[i] = find_nearest(timeLsr[:mk-1], value)
+idxs = idxs.astype("int")
+t_errors = timeGps[:l] - timeLsr[idxs]
+error_squared = np.sqrt(t_errors @ t_errors)
+    
+gps = np.array([Lo_m[:l], La_m[:l]])
+xests = xupd[idxs,:2].T
+gps_means = np.mean(gps, axis=1)
+xests_means= np.mean(xests, axis=1)
+gps_c = gps.T - gps_means
+xests_c = xests.T - xests_means
+D = (gps_c).T @ (xests_c)
+U,S,V = np.linalg.svd(D, full_matrices=True)
+Rot = V@U.T
+trans =  xests_means - Rot @ gps_means
+[Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
+
+dt = timeGps[1:] - timeGps[:-1]
+da = La_m[1:] - La_m[:-1]
+do = Lo_m[1:] - Lo_m[:-1]
+velocities = np.sqrt(da**2 + do**2)/dt
+mask = np.ones(velocities.size, dtype=bool)
+remove = np.argwhere(velocities > 6).ravel()
+mask[remove] = False
+velocities_cleaned = velocities[mask]
+
 # NIS
 insideCI = (CInorm[:mk, 0] <= NISnorm[:mk]) * (NISnorm[:mk] <= CInorm[:mk, 1])
 
@@ -269,28 +298,8 @@ ax3[1].plot(np.full(GPSi1, CI_NEES[1]), '--')
 ax3[1].plot(GPS_NIS[:GPSi1], lw=0.5)
 
 
-transform = True
-if transform:
-    l = timeGps[timeGps < timeLsr[mk-1]].shape[0]
-    idxs = np.zeros((l,))
-    for i, value in enumerate(timeGps[timeGps < timeLsr[mk-1]]):
-        idxs[i] = find_nearest(timeLsr[:mk-1], value)
-    idxs = idxs.astype("int")
-    t_errors = timeGps[:l] - timeLsr[idxs]
-    error_squared = np.sqrt(t_errors @ t_errors)
-    
-    gps = np.array([Lo_m[:l], La_m[:l]])
-    xests = xupd[idxs,:2].T
-    gps_means = np.mean(gps, axis=1)
-    xests_means= np.mean(xests, axis=1)
-    gps_c = gps.T - gps_means
-    xests_c = xests.T - xests_means
-    D = (gps_c).T @ (xests_c)
-    U,S,V = np.linalg.svd(D, full_matrices=True)
-    Rot = V@U.T
-    trans =  xests_means - Rot @ gps_means
-    [Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
-    
+
+
 
 
 # %% slam
