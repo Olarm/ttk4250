@@ -107,15 +107,15 @@ b = 0.5  # laser distance to the left of center
 
 car = Car(L, H, a, b)
 
-sigmas = [0.01, 0.01, 1/180*np.pi]
+sigmas = [0.07, 0.07, 0.3/180*np.pi]
 CorrCoeff = np.array([[1, 0, 0], [0, 1, 0.9], [0, 0.9, 1]])
 Q = np.diag(sigmas) @ CorrCoeff @ np.diag(sigmas)
 
-R = np.diag([0.002, 0.02/180*np.pi])
+R = np.diag([0.005, 0.003/180*np.pi])
 
 R_gps = np.diag([0.5, 0.5])
 
-JCBBalphas = np.array([5e-3, 5e-12])
+JCBBalphas = np.array([5e-13, 5e-10])
 
 sensorOffset = np.array([car.a + car.L, car.b])
 doAsso = True
@@ -142,7 +142,7 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 5000 #K
+N = 30000 #K
 GPSi1, GPSk2, GPSi2 = 0,0,0
 
 doPlot = False
@@ -170,6 +170,8 @@ if do_raw_prediction:  # TODO: further processing such as plotting
     for k in range(min(N, K - 1)):
         odos[k + 1] = odometry(speed[k + 1], steering[k + 1], 0.025, car)
         odox[k + 1], _ = slam.predict(odox[k], P, odos[k + 1])
+
+P = np.zeros((3, 3))
 
 for k in tqdm(range(N)):
     if mk < mK - 1 and timeLsr[mk] <= timeOdo[k + 1]:
@@ -243,8 +245,7 @@ for k in tqdm(range(N)):
         
         GPS_idx = (np.abs(timeGps - timeOdo[k])).argmin()
         if np.allclose(timeGps[GPS_idx], timeOdo[k], atol=1e-2):
-            #print(timeGps[GPS_idx], timeOdo[k])
-            z_GPS = [Lo_m[GPSk2], La_m[GPSk2]]
+            z_GPS = [Lo_m[GPS_idx], La_m[GPS_idx]]
             GPS_NIS[GPSi1] = slam.GNSS_NIS(eta[:2], P[:2,:2], z_GPS)
             GPSi1 += 1
 
@@ -269,6 +270,8 @@ xests_c = xests.T - xests_means
 D = (gps_c).T @ (xests_c)
 U,S,V = np.linalg.svd(D, full_matrices=True)
 Rot = V@U.T
+rotation = np.arccos(Rot[0,0]) * 180 / np.pi
+rotation = round(rotation, 3)
 trans =  xests_means - Rot @ gps_means
 [Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
 
@@ -276,10 +279,16 @@ dt = timeGps[1:] - timeGps[:-1]
 da = La_m[1:] - La_m[:-1]
 do = Lo_m[1:] - Lo_m[:-1]
 velocities = np.sqrt(da**2 + do**2)/dt
+
+
 mask = np.ones(velocities.size, dtype=bool)
 remove = np.argwhere(velocities > 6).ravel()
 mask[remove] = False
 velocities_cleaned = velocities[mask]
+mask = np.insert(mask, 0, True)
+#Lo_mc = Lo_m[temp_mask]
+#La_mc = La_m[temp_mask]
+#timeGps_c = timeGps[mask]
 
 # NIS
 insideCI = (CInorm[:mk, 0] <= NISnorm[:mk]) * (NISnorm[:mk] <= CInorm[:mk, 1])
@@ -304,45 +313,48 @@ ax3[1].plot(GPS_NIS[:GPSi1], lw=0.5)
 
 # %% slam
 
-#if do_raw_prediction:
-#    fig5, ax5 = plt.subplots(num=5, clear=True)
-#    ax5.scatter(
-#        Lo_m[timeGps < timeOdo[N - 1]],
-#        La_m[timeGps < timeOdo[N - 1]],
-#        c="r",
-#        marker=".",
-#        label="GPS",
-#    )
-#    ax5.scatter(
-#        Lo_mn[timeGps < timeOdo[N - 1]],
-#        La_mn[timeGps < timeOdo[N - 1]],
-#        c="r",
-#        marker=".",
-#        label="GPS",
-#    )
-#    ax5.plot(*odox[:N, :2].T, label="odom")
-#    ax5.grid()
-#    ax5.set_title("GPS vs odometry integration")
-#    ax5.legend()
+if do_raw_prediction:
+    fig5, ax5 = plt.subplots(num=5, clear=True)
+    ax5.scatter(
+        Lo_m,#[timeGps < timeOdo[N - 1]],
+        La_m,#[timeGps < timeOdo[N - 1]],
+        c="r",
+        marker=".",
+        label="GPS",
+    )
+    ax5.scatter(
+        Lo_mn,#[timeGps < timeOdo[N - 1]],
+        La_mn,#[timeGps < timeOdo[N - 1]],
+        c="g",
+        marker=".",
+        label="GPS",
+    )
+    ax5.plot(*odox[:N, :2].T, label="odom")
+    ax5.grid()
+    ax5.set_title("GPS vs odometry integration")
+    ax5.legend()
 
 # %%
 fig6, ax6 = plt.subplots(num=6, clear=True)
-ax6.scatter(*eta[3:].reshape(-1, 2).T, color="r", marker="x")
+ax6.scatter(*eta[3:].reshape(-1, 2).T, color="r", marker="x", s=10)
 ax6.plot(*xupd[mk_first:mk, :2].T)
 ax6.scatter(
     Lo_m[timeGps < timeOdo[N - 1]],
     La_m[timeGps < timeOdo[N - 1]],
-    c="r",
+    c="g",
+    s=5,
     marker=".",
     label="GPS",
 )
 ax6.scatter(
     Lo_mn,
     La_mn,
-    c="g",
+    s=5,
+    c="k",
     marker=".",
-    label="GPS",
+    label=f"GPS rotated {rotation}$^\circ$",
 )
+ax6.legend()
 ax6.set(
     title=f"Steps {k}, laser scans {mk-1}, landmarks {len(eta[3:])//2},\nmeasurements {z.shape[0]}, num new = {np.sum(a[mk] == -1)}"
 )
