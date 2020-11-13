@@ -17,6 +17,7 @@ import numpy as np
 from EKFSLAM import EKFSLAM
 import matplotlib
 import matplotlib.pyplot as plt
+import pylab as plb
 from matplotlib import animation
 from plotting import ellipse
 from vp_utils import detectTrees, odometry, Car
@@ -52,7 +53,8 @@ print("continuing with this plotting backend", end="\n\n\n")
 try:
     # installed with "pip install SciencePLots" (https://github.com/garrettj403/SciencePlots.git)
     # gives quite nice plots
-    plt_styles = ["science", "grid", "bright", "no-latex"]
+    #plt_styles = ["science", "grid", "bright", "no-latex"]
+    plt_styles = ["science", "grid", "bright"]
     plt.style.use(plt_styles)
     print(f"pyplot using style set {plt_styles}")
 except Exception as e:
@@ -142,7 +144,7 @@ mk = mk_first
 t = timeOdo[0]
 
 # %%  run
-N = 30000 #K
+N = 1000 #K
 GPSi1, GPSk2, GPSi2 = 0,0,0
 
 doPlot = False
@@ -254,9 +256,25 @@ for k in tqdm(range(N)):
 # %% Consistency
 
 l = timeGps[timeGps < timeLsr[mk-1]].shape[0]
-idxs = np.zeros((l,))
-for i, value in enumerate(timeGps[timeGps < timeLsr[mk-1]]):
-    idxs[i] = find_nearest(timeLsr[:mk-1], value)
+idxs = np.array([], dtype="int")
+short_idxs = np.array([], dtype="int")
+exclude = np.array([], dtype="int")
+i = 0
+for j, value in enumerate(timeGps[timeGps < timeLsr[mk-1]]):
+    index = find_nearest(timeLsr[:mk-1], value)
+    idxs = np.append(idxs, index)
+    if index not in short_idxs:
+        short_idxs = np.append(short_idxs, index)
+        i += 1
+    else:
+        exclude = np.append(exclude, j)
+        
+short_idxs = np.delete(short_idxs, 0)
+gps_mask = np.ones(La_m.shape[0], dtype=bool)
+gps_mask[exclude] = False
+gps_mask[l:] = False
+gps_mask[0] = False
+        
 idxs = idxs.astype("int")
 t_errors = timeGps[:l] - timeLsr[idxs]
 error_squared = np.sqrt(t_errors @ t_errors)
@@ -273,13 +291,24 @@ Rot = V@U.T
 rotation = np.arccos(Rot[0,0]) * 180 / np.pi
 rotation = round(rotation, 3)
 trans =  xests_means - Rot @ gps_means
-[Lo_mn, La_mn] = (gps.T @ Rot.T + trans).T
+[Lo_mn, La_mn] = (gps.T @ Rot.T ).T
 
+# GPS velocities
 dt = timeGps[1:] - timeGps[:-1]
 da = La_m[1:] - La_m[:-1]
 do = Lo_m[1:] - Lo_m[:-1]
 velocities = np.sqrt(da**2 + do**2)/dt
 
+gps_masked = np.array([Lo_m[gps_mask], La_m[gps_mask]])
+timeGps_masked = timeGps[gps_mask]
+dt_gps_masked = timeGps_masked[1:] - timeGps_masked[:-1]
+dgps_masked = gps_masked[:,1:] - gps_masked[:,:-1]
+gps_masked_vel = np.sqrt(dgps_masked[0,:]**2 + dgps_masked[1,:]**2)/dt_gps_masked
+
+# Estimated velocities
+dt_e = timeLsr[short_idxs[1:]] - timeLsr[short_idxs[:-1]]
+xy_e = xupd[short_idxs[1:],:2] - xupd[short_idxs[:-1], :2]
+vel_est = np.sqrt(xy_e[:,0]**2 + xy_e[:,1]**2)/dt_e
 
 mask = np.ones(velocities.size, dtype=bool)
 remove = np.argwhere(velocities > 6).ravel()
@@ -297,19 +326,22 @@ fig3, ax3 = plt.subplots(nrows=2, num=3, clear=True)
 ax3[0].plot(CInorm[:mk, 0], "--")
 ax3[0].plot(CInorm[:mk, 1], "--")
 ax3[0].plot(NISnorm[:mk], lw=0.5)
-ax3[0].set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI")
+ax3[0].set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {NISnorm[:mk].mean()}")
 
-CI_NEES = chi2.interval(1-alpha, 2)
+CI_NIS = np.array(chi2.interval(1-alpha, 2))
 
-insideCI = (CI_NEES[0] <= GPS_NEES) * (GPS_NEES <= CI_NEES[1])
-ax3[1].plot(np.full(GPSi1, CI_NEES[0]), '--')
-ax3[1].plot(np.full(GPSi1, CI_NEES[1]), '--')
+insideCI = (CI_NIS[0] <= GPS_NIS) * (GPS_NIS <= CI_NIS[1])
+ax3[1].plot(np.full(GPSi1, CI_NIS[0]), '--')
+ax3[1].plot(np.full(GPSi1, CI_NIS[1]), '--')
 ax3[1].plot(GPS_NIS[:GPSi1], lw=0.5)
+ax3[1].set_title(f"GNSS NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {GPS_NIS.mean()}")
 
-
-
-
-
+vel_rmse = np.sqrt(np.linalg.norm(gps_masked_vel) - np.linalg.norm(vel_est))
+fig4, ax4 = plt.subplots(num=4, clear=True)
+ax4.plot(gps_masked_vel, label="GNSS velocity")
+ax4.plot(vel_est, label="xupd velocity")
+ax4.legend(prop={'size': 8})
+ax4.set_title(f"GNSS and estimated velocities, RMSE {np.round(vel_rmse, 2)}")
 
 # %% slam
 
@@ -344,7 +376,7 @@ ax6.scatter(
     c="g",
     s=5,
     marker=".",
-    label="GPS",
+    label="GNSS",
 )
 ax6.scatter(
     Lo_mn,
@@ -352,11 +384,13 @@ ax6.scatter(
     s=5,
     c="k",
     marker=".",
-    label=f"GPS rotated {rotation}$^\circ$",
+    #label=r"GNSS $\theta$ = "+f"{rotation}$^\circ$, $T$ = {np.round(trans,2)}",
+    label="GNSS transformed"
 )
-ax6.legend()
+ax6.legend(prop={'size': 8})
 ax6.set(
-    title=f"Steps {k}, laser scans {mk-1}, landmarks {len(eta[3:])//2},\nmeasurements {z.shape[0]}, num new = {np.sum(a[mk] == -1)}"
+    title = f"landmarks {len(eta[3:])//2}"
+    #title=f"Steps {k}, laser scans {mk-1}, landmarks {len(eta[3:])//2},\nmeasurements {z.shape[0]}, num new = {np.sum(a[mk] == -1)}"
 )
 plt.show()
 

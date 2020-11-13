@@ -247,11 +247,11 @@ ax3.grid()
 fig1.tight_layout()
 
 #plb.show()
-plt.savefig("report/figures/sim_results.eps", format="eps")
+#plt.savefig("report/figures/sim_results.eps", format="eps")
 
 # %% Consistency
 
-fig2, ax2 = plt.subplots(nrows=2, ncols=2, num=2, figsize=(10,4), clear=True)
+fig2, ax2 = plt.subplots(nrows=2, ncols=2, num=2, figsize=(10,3), clear=True)
 
 # NIS
 
@@ -259,7 +259,7 @@ insideCI = (CInorm[:N,0] <= NISnorm[:N]) * (NISnorm[:N] <= CInorm[:N,1])
 ax2[0,0].plot(CInorm[:N,0], '--')
 ax2[0,0].plot(CInorm[:N,1], '--')
 ax2[0,0].plot(NISnorm[:N], lw=0.5)
-ax2[0,0].set_title(f'A: NIS, {round(insideCI.mean()*100, 4)}% inside CI')
+ax2[0,0].set_title(f'A: NIS {round(insideCI.mean()*100, 4)}% inside CI, ANIS = {NISnorm[:N].mean()}')
 
 # NEES
 
