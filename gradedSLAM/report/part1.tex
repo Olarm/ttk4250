@@ -3,13 +3,33 @@
 
 \subsection{Thoughts on tuning VP}
 
+For the simulated data, the tuning to achieve acceptable consistency seemed to mainly
+involve $Q$ and $R$, 
+
+The tuning was mainly done on the first 5000 iterations, due to constraints
+in runtime.
+We first tuned by only looking at the odometry results,
+trying to get as good fit as possible on the first few thousand samples.
+The weakness in the odometry appeared to be long turns, 
+where it slowly drifted resulting in an increasing off-set.
+This then appears to be what the laser measurements must handle.
+Considering that the odometry appears fairly capable of following most 
+maneuvers, it would seem that the noise required for the laser
+updates should be fairly small in order to compensate
+for the odometry drift. 
 
 \begin{itemize}
     \item Higher $R_1$ Less landmarks
     \item Trust odometry to much causes predicted position to change making it harder to make associations
-    \item Too large R, we overfit and NIS becomes small
     \item Avoid detecting same object as different
     \item Make sure Q is tuned so that P contains reasonable values
+    \item High Q causes initial pose offset that stays uncorrected
+    \item To many landmarks indicate that our position has drifted such that the same landmark is detected again
+    \item To few landmarks indicate that we treat different landmarks as the same, either indicates drift or to high noise
+    \item To high $\sigma_3$ introduces pose error, to low makes the system react to slowly to turns
+    \item Hard to get NIS above lower limit while matching GNSS trajectory
+    \item Smaller JCBB alphas increase variance in NIS and decrease number of landmarks
+    \item Large R, overfit and NIS becomes small, few landmarks
 \end{itemize}
 
 
@@ -32,14 +52,54 @@
 
 \subsection{Fit to GNSS}
 
-\begin{itemize}
-    \item For NEES with GNSS, remove outliers
-\end{itemize}
 
-One way of showing a fit between the GNSS data and the estimated 
-positions is to attempt a translation of the GNSS data onto the estimates
-and analyse the error. We found the rotation using SVD and the translation
-was found by solving a linear least squares problem.
+To try to identify any significant offset between our estimates
+and the GNSS measurements we transformed the GNSS measurements onto our estimates.
+The optimal rotation was found using SVD,
 
-To compare with GNSS we computed NIS values by finding each odometry
-measurement closest in time to the GNSS measurements.
+\begin{align*}
+    H = 
+    \begin{bmatrix}
+        \mathbf{Lo_{gnss}} & \mathbf{La_{gnss}}
+    \end{bmatrix}
+    \begin{bmatrix}
+        \mathbf{Lo_{est}} \\ \mathbf{La_{est}}
+    \end{bmatrix}
+    , \quad
+    U, S, V = SVD(H)
+    , \quad
+    R = VU^T
+\end{align*}
+
+whereas the translation was 
+solved by OLS.
+
+\begin{align*}
+    T = \frac{1}{N} \sum_{1}^{N} 
+    \begin{bmatrix}
+        Lo_{gnss_i} \\ La_{gnss_i}
+    \end{bmatrix}
+    - \mathbf{R}
+    \frac{1}{N} \sum_{1}^{N} 
+    \begin{bmatrix}
+        Lo_{est_i} \\ La_{est_i}
+    \end{bmatrix}
+\end{align*}
+
+We observed some transformation when iterating over less data
+(5-10k iterations). When iterating over more data (20k+ iterations),
+the optimal transformation became close to negligible, as seen in figure (blabla).
+Our understanding from this is that any drift is incurred mainly
+from turning. With proper tuning, the incurred drift is seemingly negated
+at a later time when turning in the opposite direction or when we are able
+to correct our trajectory by making correct joins from laser measurements.
+In other words,
+when driving around at random, we get a good track. If however this 
+was a NASCAR dataset, we would probably have to tune differently to 
+avoid an increasing offset.
+
+To compare with GNSS we computed NIS by using the odometry predictions
+as if we would update using GNSS. We paired a prediction with a GNSS
+measurement by locating the closest GNSS sample to each odometry measurement
+that was also within 0.01 seconds (chosen by a little trial and error) 
+of eachother.
