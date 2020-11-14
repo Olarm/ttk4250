@@ -6,6 +6,8 @@
 For the simulated data, the tuning to achieve acceptable consistency seemed to mainly
 involve $Q$ and $R$, 
 
+From the data we sat that the odometry measurements had sampling time of roughly $0.025$ seconds.
+Guessing that the vehicle might accelerate at $1 m/s^2$
 The tuning was mainly done on the first 5000 iterations, due to constraints
 in runtime.
 We first tuned by only looking at the odometry results,
@@ -16,7 +18,16 @@ This then appears to be what the laser measurements must handle.
 Considering that the odometry appears fairly capable of following most 
 maneuvers, it would seem that the noise required for the laser
 updates should be fairly small in order to compensate
-for the odometry drift. 
+for the odometry drift. Tuning R, with some tadjustment of JCCB$\alpha$s 
+and Q, we made a few observations. R had to be kept below certain values 
+for NIS to stay above the lower bound. Also a too high bearing noise $r_{\theta}$
+tended to introduce sharp changes in bearing. 
+We assume this to be caused by mismatching of landmarks due to the high noise.
+The JCBB$\alpha$s also affected NIS greatly, lower values reduced the variance
+in NIS making it easier to fit inside the interval. However low R values along
+with low JCBB$\alpha$s also made the laser measurements seemingly more unreliable
+and introduced unwanted offsets leading to large deviations from the GNSS measurements.
+
 
 \begin{itemize}
     \item Higher $R_1$ Less landmarks
