@@ -76,6 +76,8 @@ except Exception as e:
         }
     )
 
+plt.rcParams.update({"font.size":6})
+
 # %% Load data
 VICTORIA_PARK_PATH = "./victoria_park/"
 realSLAM_ws = {
@@ -322,26 +324,38 @@ mask = np.insert(mask, 0, True)
 # NIS
 insideCI = (CInorm[:mk, 0] <= NISnorm[:mk]) * (NISnorm[:mk] <= CInorm[:mk, 1])
 
-fig3, ax3 = plt.subplots(nrows=2, num=3, clear=True)
-ax3[0].plot(CInorm[:mk, 0], "--")
-ax3[0].plot(CInorm[:mk, 1], "--")
-ax3[0].plot(NISnorm[:mk], lw=0.5)
-ax3[0].set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {NISnorm[:mk].mean()}")
+fig3, ax3 = plt.subplots(nrows=2, ncols=2, num=3, clear=True)
+ax3[0,0].plot(CInorm[:mk, 0], "--")
+ax3[0,0].plot(CInorm[:mk, 1], "--")
+ax3[0,0].plot(NISnorm[:mk], lw=0.5)
+ax3[0,0].set_title(f"NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {NISnorm[:mk].mean()}")
 
 CI_NIS = np.array(chi2.interval(1-alpha, 2))
 
 insideCI = (CI_NIS[0] <= GPS_NIS) * (GPS_NIS <= CI_NIS[1])
-ax3[1].plot(np.full(GPSi1, CI_NIS[0]), '--')
-ax3[1].plot(np.full(GPSi1, CI_NIS[1]), '--')
-ax3[1].plot(GPS_NIS[:GPSi1], lw=0.5)
-ax3[1].set_title(f"GNSS NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {GPS_NIS.mean()}")
+ax3[1,0].plot(np.full(GPSi1, CI_NIS[0]), '--')
+ax3[1,0].plot(np.full(GPSi1, CI_NIS[1]), '--')
+ax3[1,0].plot(GPS_NIS[:GPSi1], lw=0.5)
+ax3[1,0].set_title(f"GNSS NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {GPS_NIS.mean()}")
 
 vel_rmse = np.sqrt(np.linalg.norm(gps_masked_vel) - np.linalg.norm(vel_est))
-fig4, ax4 = plt.subplots(num=4, clear=True)
-ax4.plot(gps_masked_vel, label="GNSS velocity")
-ax4.plot(vel_est, label="xupd velocity")
-ax4.legend(prop={'size': 8})
-ax4.set_title(f"GNSS and estimated velocities, RMSE {np.round(vel_rmse, 2)}")
+LO_RMSE = np.sqrt(np.sum((gps_masked[0,:] - xupd[short_idxs,0])**2))
+LA_RMSE = np.sqrt(np.sum((gps_masked[1,:] - xupd[short_idxs,1])**2))
+Time_RMSE = np.sqrt(np.sum((timeGps_masked - timeLsr[short_idxs])**2))
+
+ax3[0,1].plot(gps_masked[0,:], label="GNSS lo")
+ax3[0,1].plot(gps_masked[1,:], label="GNSS la")
+ax3[0,1].plot(xupd[short_idxs,0], label="xupd lo")
+ax3[0,1].plot(xupd[short_idxs,1], label="xupd la")
+ax3[0,1].legend(prop={'size': 7})
+ax3[0,1].set_title(f"Longitude RMSE {np.round(LO_RMSE,2)}, Latitude RMSE {np.round(LA_RMSE, 2)}, Time RMSE = {np.round(Time_RMSE, 2)}")
+
+ax3[1,1].plot(gps_masked_vel, label="GNSS velocity")
+ax3[1,1].plot(vel_est, label="xupd velocity")
+ax3[1,1].legend(prop={'size': 7})
+ax3[1,1].set_title(f"GNSS and estimated velocities, RMSE {np.round(vel_rmse, 2)}")
+
+plt.tight_layout()
 
 # %% slam
 
