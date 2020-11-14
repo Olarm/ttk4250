@@ -62,6 +62,7 @@ except Exception as e:
     print("setting grid and only grid and legend manually")
     plt.rcParams.update(
         {
+            #"font.size":6,
             # setgrid
             "axes.grid": True,
             "grid.linestyle": ":",
@@ -76,7 +77,6 @@ except Exception as e:
         }
     )
 
-plt.rcParams.update({"font.size":6})
 
 # %% Load data
 VICTORIA_PARK_PATH = "./victoria_park/"
@@ -324,7 +324,7 @@ mask = np.insert(mask, 0, True)
 # NIS
 insideCI = (CInorm[:mk, 0] <= NISnorm[:mk]) * (NISnorm[:mk] <= CInorm[:mk, 1])
 
-fig3, ax3 = plt.subplots(nrows=2, ncols=2, num=3, clear=True)
+fig3, ax3 = plt.subplots(nrows=2, ncols=2, num=3, clear=True, figsize=(10,4))
 ax3[0,0].plot(CInorm[:mk, 0], "--")
 ax3[0,0].plot(CInorm[:mk, 1], "--")
 ax3[0,0].plot(NISnorm[:mk], lw=0.5)
@@ -336,7 +336,7 @@ insideCI = (CI_NIS[0] <= GPS_NIS) * (GPS_NIS <= CI_NIS[1])
 ax3[1,0].plot(np.full(GPSi1, CI_NIS[0]), '--')
 ax3[1,0].plot(np.full(GPSi1, CI_NIS[1]), '--')
 ax3[1,0].plot(GPS_NIS[:GPSi1], lw=0.5)
-ax3[1,0].set_title(f"GNSS NIS, {insideCI.mean()*100:.2f}% inside CI, ANIS = {GPS_NIS.mean()}")
+ax3[1,0].set_title(f"GNSS NIS {insideCI.mean()*100:.2f}% inside CI, ANIS = {np.round(GPS_NIS.mean(),2)}")
 
 vel_rmse = np.sqrt(np.linalg.norm(gps_masked_vel) - np.linalg.norm(vel_est))
 LO_RMSE = np.sqrt(np.sum((gps_masked[0,:] - xupd[short_idxs,0])**2))
